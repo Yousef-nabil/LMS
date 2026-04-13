@@ -51,15 +51,15 @@ export class AuthService {
     };
   }
 
-  // 🔑 Generate tokens
+  // Generate tokens
   async generateTokens(userId: bigint, email: string) {
     const payload = { sub: userId.toString(), email };
 
     const access_token = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
+      expiresIn: '30m',
     });
 
-    const refresh_token = randomUUID(); // simple token
+    const refresh_token = randomUUID(); 
 
     return {
       access_token,
@@ -67,7 +67,7 @@ export class AuthService {
     };
   }
 
-  // 💾 Save refresh token
+  // Save refresh token
   async saveRefreshToken(userId: bigint, token: string) {
     const hashed = await bcrypt.hash(token, 10);
 
