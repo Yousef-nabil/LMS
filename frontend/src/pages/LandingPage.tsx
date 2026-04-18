@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { Play, Star, Users, BookOpen, Award } from "lucide-react";
+import { Play, Users, BookOpen, Award } from "lucide-react";
 import landingImg from "../assets/landing.jpg";
 import logoIcon from "../assets/icon.png";
 import { mockCourses } from "../data/mockData";
