@@ -1,16 +1,19 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
+import { LoginDto } from './dto/login.dto';
+import { AuthRepo } from './auth.repo';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+    private authRepo: AuthRepo
+  ) { }
 
   async signup(dto: SignupDto) {
     // 1. check existing
@@ -59,24 +62,73 @@ export class AuthService {
       expiresIn: '30m',
     });
 
-    const refresh_token = randomUUID(); 
+    const refresh_token = randomUUID();
 
     return {
       access_token,
       refresh_token,
     };
   }
+  async generateAccessToken(userId: bigint, email: string) {
+    const payload = { sub: userId.toString(), email };
+
+    const access_token = await this.jwtService.signAsync(payload, {
+      expiresIn: '30m',
+    });
+    return {
+      access_token
+    };
+  }
 
   // Save refresh token
   async saveRefreshToken(userId: bigint, token: string) {
     const hashed = await bcrypt.hash(token, 10);
-
-    await this.prisma.refresh_tokens.create({
-      data: {
-        user_id: userId,
-        token: hashed,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
+    return await this.authRepo.createRefreshToken({
+      userId: Number(userId),
+      token,
+      expiresAt: new Date()
     });
+  }
+
+  async login(payload: LoginDto) {
+    const user = await this.prisma.users.findUnique({
+      where: { email: payload.email },
+    });
+    if (!user) {
+      throw new NotFoundException('Wrong email or password');
+    }
+
+    const isMatch = await bcrypt.compare(payload.password, user.password_hash);
+    if (!isMatch) {
+      throw new ForbiddenException('Wrong email or password');
+    }
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    await this.saveRefreshToken(user.id, tokens.refresh_token);
+    return tokens
+  }
+  async RefreshToken(token: string, userId: number) {
+        if(!userId || !token)
+    {
+           throw new ForbiddenException()
+     
+    }
+    const isValidToken = await this.authRepo.validateAccessToken({
+      token
+    })
+    if (isValidToken) {
+      const user = await this.prisma.users.findUnique({
+        where: { id: userId },
+      });
+      if(!user)
+      {
+        throw new BadRequestException("User not found")
+      }
+      return await this.generateAccessToken(user.id,user.email)
+    }
+    else {
+      console.log(isValidToken)
+      throw new ForbiddenException()
+    }
   }
 }
