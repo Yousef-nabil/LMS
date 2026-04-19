@@ -8,6 +8,9 @@ import * as cookieParser from 'cookie-parser';
 dotenv.config();
 
 async function bootstrap() {
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
