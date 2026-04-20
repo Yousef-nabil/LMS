@@ -1,9 +1,9 @@
 import { createBrowserRouter } from "react-router";
-import { LoginPage } from "../pages/LoginPage";
+import { LandingPage } from "../pages/LandingPage";
 
 export const router = createBrowserRouter([
   {
-    path: "/login",
-    Component: LoginPage,
+    path: "/",
+    Component: LandingPage,
   }
 ]);
