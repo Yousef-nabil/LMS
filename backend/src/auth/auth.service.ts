@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AuthRepo } from './auth.repo';
 import { createHash } from 'crypto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 @Injectable()
 export class AuthService {
   constructor(
@@ -134,5 +135,9 @@ export class AuthService {
       throw new BadRequestException('invalid credentials')
     }
 
+  }
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async deleteOldTokens() {
+    return await this.authRepo.deleteOldTokens();
   }
 }

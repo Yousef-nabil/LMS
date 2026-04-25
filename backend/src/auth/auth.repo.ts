@@ -24,6 +24,20 @@ export class AuthRepo {
             }
         })
     }
+    async deleteOldTokens() {
+        return await this.prisma.refresh_tokens.deleteMany({
+            where: {
+                OR: [
+                    {
+                        expires_at: { lte: new Date() }
+                    },
+                    {
+                        revoked: true
+                    }
+                ]
+            }
+        })
+    }
     async validateRefreshToken(refreshToken: RefreshTokenInput) {
         return await this.prisma.refresh_tokens.findFirst({
             where: {
