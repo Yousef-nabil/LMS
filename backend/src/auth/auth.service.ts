@@ -128,7 +128,7 @@ export class AuthService {
     const hashed = createHash('sha256').update(token).digest('hex');
     try {
       await this.authRepo.revokeRefreshToken({
-        token:hashed
+        token: hashed
       })
     }
     catch (e) {
@@ -139,5 +139,22 @@ export class AuthService {
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async deleteOldTokens() {
     return await this.authRepo.deleteOldTokens();
+  }
+  async googleAuth(idToken: string) {
+    /*
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) throw new Error('Invalid token');
+
+    const email = payload.email;
+    const googleId = payload.sub;
+
+    */
+
   }
 }
