@@ -7,11 +7,14 @@ import logoIcon from "../assets/icon.png";
 import FormInput from "../components/FormInput";
 import AlertCard from "../components/AlertCard";
 import type { SignupRequest, SignupErrors, Role } from "../types/auth";
-import { authService } from "../api/authService";
+import { authService } from "../api";
 import { validateSignup } from "../utils/helper";
+import { useAppDispatch } from "../store/hooks";
+import { setCredentials } from "../store/slices/authSlice";
 
 export function SignupPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +34,10 @@ export function SignupPage() {
     setLoading(true);
     try {
       const data: SignupRequest = { name, email, password, role: role as Role };
-      await authService.signup(data);
+      const response = await authService.signup(data);
+      // const user = response.user || { name, email, role };
+      // dispatch(setCredentials({ user }));
+      // navigate(role === "student" ? "/student/dashboard" : "/instructor/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.message || "Signup failed. Please try again.");
     } finally {
@@ -42,6 +48,7 @@ export function SignupPage() {
   const handleGoogleLogin = async () => {
    
   };
+
 
   const roles: { value: Role; label: string; description: string; icon: React.ReactNode }[] = [
     {

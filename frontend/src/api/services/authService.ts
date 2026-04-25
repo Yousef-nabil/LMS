@@ -1,5 +1,5 @@
-import api from "./axios";
-import type { LoginRequest, SignupRequest } from "../types/auth";
+import api from "../client";
+import type { LoginRequest, SignupRequest } from "../../types/auth";
 
 export const authService = {
   login: async (credentials: LoginRequest) => {
@@ -16,10 +16,9 @@ export const authService = {
     const response = await api.post("/auth/logout");
     return response.data;
   },
-  
- 
+
   getSelf: async () => {
     const response = await api.get("/auth/me");
     return response.data;
-  }
+  },
 };

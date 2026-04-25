@@ -6,11 +6,14 @@ import { GraduationCap } from "lucide-react";
 import FormInput from "../components/FormInput";
 import AlertCard from "../components/AlertCard";
 import type { LoginRequest, LoginErrors } from "../types/auth";
-import { authService } from "../api/authService";
+import { authService } from "../api";
 import { validateLogin } from "../utils/helper";
+import { useAppDispatch } from "../store/hooks";
+import { setCredentials } from "../store/slices/authSlice";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,8 +30,10 @@ export function LoginPage() {
     setLoading(true);
     try {
       const credentials: LoginRequest = { email, password };
-      await authService.login(credentials);
-      navigate("/student/dashboard");
+      const response = await authService.login(credentials);
+      const user = response.user;
+      // dispatch(setCredentials({ user }));
+      // navigate(user.role === 'instructor' ? "/instructor/dashboard" : "/student/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
