@@ -30,7 +30,7 @@ export class AuthRepo {
                 token: refreshToken.token,
                 revoked: false,
                 expires_at: {
-                    gt: Date()
+                    gt: new Date()
                 }
             }
         })

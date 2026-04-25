@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AuthRepo } from './auth.repo';
-
+import { createHash } from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -81,10 +81,10 @@ export class AuthService {
 
   // Save refresh token
   async saveRefreshToken(userId: bigint, token: string) {
-    const hashed = await bcrypt.hash(token, 10);
+    const hashed = createHash('sha256').update(token).digest('hex'); //better for fast compare
     return await this.authRepo.createRefreshToken({
       userId: Number(userId),
-      token:hashed
+      token: hashed
     });
   }
 
@@ -106,8 +106,9 @@ export class AuthService {
     return tokens
   }
   async RefreshToken(token: string) {
+    const hashed = createHash('sha256').update(token).digest('hex');
     const isValidToken = await this.authRepo.validateRefreshToken({
-      token
+      token: hashed
     })
     if (isValidToken) {
       const user = await this.prisma.users.findUnique({
@@ -123,8 +124,15 @@ export class AuthService {
     }
   }
   async logout(token: string) {
-    const revokeToken = await this.authRepo.revokeRefreshToken({
-      token
-    })
+    const hashed = createHash('sha256').update(token).digest('hex');
+    try {
+      await this.authRepo.revokeRefreshToken({
+        token:hashed
+      })
+    }
+    catch (e) {
+      throw new BadRequestException('invalid credentials')
+    }
+
   }
 }
