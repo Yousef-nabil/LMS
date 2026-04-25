@@ -1,5 +1,5 @@
-import { Body, Controller, ForbiddenException, Post, Req, Res, UseGuards } from '@nestjs/common';
-import type { Response,Request } from 'express';
+import { BadRequestException, Body, Controller, ForbiddenException, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,14 +20,18 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
+      secure:true
+
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure:true
+
     });
 
-    return { user: res.user };
+    return { sucess: true };
   }
   @Post('login')
   async login(
@@ -38,29 +42,46 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
+      secure:true
+
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure:true
+
     });
-    return { success: "true" }
+    return { success: true }
   }
   @Post('/refresh')
-  @UseGuards(JwtAuthGuard) 
   async refresh(
-    @Req () req :Request,
+    @Req() req: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const userId= (req as any).user?.sub;
     const token = req.cookies['refresh_token'];
-
-    console.log((req as any).user)
-    const res=await this.authService.RefreshToken(token,userId)
+    if (!token) {
+      throw new ForbiddenException("Invalid session")
+    }
+    const res = await this.authService.RefreshToken(token)
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
+      secure:true
     });
-    return { success: "true" }
+    return { success: true }
+  }
+  @Post('/logout')
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const token = req.cookies['refresh_token'];
+    if (token) {
+      await this.authService.logout(token);
+    }
+    response.clearCookie('access_token');
+    response.clearCookie('refresh_token');
+    return { success: true }
   }
 }

@@ -71,7 +71,6 @@ export class AuthService {
   }
   async generateAccessToken(userId: bigint, email: string) {
     const payload = { sub: userId.toString(), email };
-
     const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '30m',
     });
@@ -85,8 +84,7 @@ export class AuthService {
     const hashed = await bcrypt.hash(token, 10);
     return await this.authRepo.createRefreshToken({
       userId: Number(userId),
-      token,
-      expiresAt: new Date()
+      token:hashed
     });
   }
 
@@ -95,40 +93,38 @@ export class AuthService {
       where: { email: payload.email },
     });
     if (!user) {
-      throw new NotFoundException('Wrong email or password');
+      throw new NotFoundException('invalid credentials');
     }
 
     const isMatch = await bcrypt.compare(payload.password, user.password_hash);
     if (!isMatch) {
-      throw new ForbiddenException('Wrong email or password');
+      throw new ForbiddenException('invalid credentials');
     }
     const tokens = await this.generateTokens(user.id, user.email);
 
     await this.saveRefreshToken(user.id, tokens.refresh_token);
     return tokens
   }
-  async RefreshToken(token: string, userId: number) {
-        if(!userId || !token)
-    {
-           throw new ForbiddenException()
-     
-    }
-    const isValidToken = await this.authRepo.validateAccessToken({
+  async RefreshToken(token: string) {
+    const isValidToken = await this.authRepo.validateRefreshToken({
       token
     })
     if (isValidToken) {
       const user = await this.prisma.users.findUnique({
-        where: { id: userId },
+        where: { id: isValidToken.user_id },
       });
-      if(!user)
-      {
+      if (!user) {
         throw new BadRequestException("User not found")
       }
-      return await this.generateAccessToken(user.id,user.email)
+      return await this.generateAccessToken(user.id, user.email)
     }
     else {
-      console.log(isValidToken)
-      throw new ForbiddenException()
+      throw new ForbiddenException("Invalid session")
     }
+  }
+  async logout(token: string) {
+    const revokeToken = await this.authRepo.revokeRefreshToken({
+      token
+    })
   }
 }
