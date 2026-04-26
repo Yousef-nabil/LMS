@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
@@ -13,8 +18,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private authRepo: AuthRepo
-  ) { }
+    private authRepo: AuthRepo,
+  ) {}
 
   async signup(dto: SignupDto) {
     // 1. check existing
@@ -76,7 +81,7 @@ export class AuthService {
       expiresIn: '30m',
     });
     return {
-      access_token
+      access_token,
     };
   }
 
@@ -85,7 +90,7 @@ export class AuthService {
     const hashed = createHash('sha256').update(token).digest('hex'); //better for fast compare
     return await this.authRepo.createRefreshToken({
       userId: Number(userId),
-      token: hashed
+      token: hashed,
     });
   }
 
@@ -104,37 +109,34 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email);
 
     await this.saveRefreshToken(user.id, tokens.refresh_token);
-    return tokens
+    return tokens;
   }
   async RefreshToken(token: string) {
     const hashed = createHash('sha256').update(token).digest('hex');
     const isValidToken = await this.authRepo.validateRefreshToken({
-      token: hashed
-    })
+      token: hashed,
+    });
     if (isValidToken) {
       const user = await this.prisma.users.findUnique({
         where: { id: isValidToken.user_id },
       });
       if (!user) {
-        throw new BadRequestException("User not found")
+        throw new BadRequestException('User not found');
       }
-      return await this.generateAccessToken(user.id, user.email)
-    }
-    else {
-      throw new ForbiddenException("Invalid session")
+      return await this.generateAccessToken(user.id, user.email);
+    } else {
+      throw new ForbiddenException('Invalid session');
     }
   }
   async logout(token: string) {
     const hashed = createHash('sha256').update(token).digest('hex');
     try {
       await this.authRepo.revokeRefreshToken({
-        token: hashed
-      })
+        token: hashed,
+      });
+    } catch (e) {
+      throw new BadRequestException('invalid credentials');
     }
-    catch (e) {
-      throw new BadRequestException('invalid credentials')
-    }
-
   }
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async deleteOldTokens() {
@@ -155,6 +157,5 @@ export class AuthService {
     const googleId = payload.sub;
 
     */
-
   }
 }

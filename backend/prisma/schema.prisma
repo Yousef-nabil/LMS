@@ -36,6 +36,7 @@ model contents {
   type      content_type
   file_url  String?      @db.VarChar(500)
   file_size BigInt?
+  position  Int          @default(0)
   courses   courses      @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 

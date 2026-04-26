@@ -10,13 +10,13 @@ import { AuthRepo } from './auth.repo';
   imports: [
     PrismaModule,
     JwtModule.register({
-      secret: "u01QGzwTcrEGpw7MVWT67Y9E0QvidXKNAVFMhrLMFsr",
+      secret: 'u01QGzwTcrEGpw7MVWT67Y9E0QvidXKNAVFMhrLMFsr',
       signOptions: {
         expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as StringValue,
       },
     }),
   ],
-  providers: [AuthService,AuthRepo],
+  providers: [AuthService, AuthRepo],
   controllers: [AuthController],
 })
 export class AuthModule {}

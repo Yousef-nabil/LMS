@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -8,7 +17,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Post('signup')
   async signup(
@@ -20,15 +29,13 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
-
+      secure: true,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure:true
-
+      secure: true,
     });
 
     return { sucess: true };
@@ -38,21 +45,19 @@ export class AuthController {
     @Body() payload: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const res = await this.authService.login(payload)
+    const res = await this.authService.login(payload);
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
-
+      secure: true,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure:true
-
+      secure: true,
     });
-    return { success: true }
+    return { success: true };
   }
   @Post('/refresh')
   async refresh(
@@ -61,15 +66,15 @@ export class AuthController {
   ) {
     const token = req.cookies['refresh_token'];
     if (!token) {
-      throw new ForbiddenException("Invalid session")
+      throw new ForbiddenException('Invalid session');
     }
-    const res = await this.authService.RefreshToken(token)
+    const res = await this.authService.RefreshToken(token);
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
+      secure: true,
     });
-    return { success: true }
+    return { success: true };
   }
   @Post('/logout')
   async logout(
@@ -82,6 +87,6 @@ export class AuthController {
     }
     response.clearCookie('access_token');
     response.clearCookie('refresh_token');
-    return { success: true }
+    return { success: true };
   }
 }
