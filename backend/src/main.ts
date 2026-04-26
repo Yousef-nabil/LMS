@@ -6,6 +6,7 @@ import * as cookieParser from 'cookie-parser';
 
 
 dotenv.config();
+dotenv.config({ path: '.env.local', override: true });
 
 async function bootstrap() {
 (BigInt.prototype as any).toJSON = function () {
