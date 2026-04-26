@@ -5,10 +5,13 @@ import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuthRepo } from './auth.repo';
+import { PassportModule } from '@nestjs/passport';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
     PrismaModule,
+    PassportModule.register({ session: false }),
     JwtModule.register({
       secret: "u01QGzwTcrEGpw7MVWT67Y9E0QvidXKNAVFMhrLMFsr",
       signOptions: {
@@ -16,7 +19,7 @@ import { AuthRepo } from './auth.repo';
       },
     }),
   ],
-  providers: [AuthService,AuthRepo],
+  providers: [AuthService,AuthRepo,GoogleStrategy],
   controllers: [AuthController],
 })
 export class AuthModule {}
