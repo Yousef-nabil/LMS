@@ -9,6 +9,9 @@ dotenv.config();
 dotenv.config({ path: '.env.local', override: true });
 
 async function bootstrap() {
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
