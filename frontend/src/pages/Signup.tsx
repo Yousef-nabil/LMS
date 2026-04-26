@@ -34,10 +34,10 @@ export function SignupPage() {
     setLoading(true);
     try {
       const data: SignupRequest = { name, email, password, role: role as Role };
-      const response = await authService.signup(data);
-      // const user = response.user || { name, email, role };
-      // dispatch(setCredentials({ user }));
-      // navigate(role === "student" ? "/student/dashboard" : "/instructor/dashboard");
+      await authService.signup(data);
+      const { data: user } = await authService.getSelf();
+      dispatch(setCredentials({ user }));
+      // navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || "Signup failed. Please try again.");
     } finally {

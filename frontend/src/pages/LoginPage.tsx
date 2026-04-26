@@ -30,10 +30,10 @@ export function LoginPage() {
     setLoading(true);
     try {
       const credentials: LoginRequest = { email, password };
-      const response = await authService.login(credentials);
-      const user = response.user;
-      // dispatch(setCredentials({ user }));
-      // navigate(user.role === 'instructor' ? "/instructor/dashboard" : "/student/dashboard");
+      await authService.login(credentials);
+      const { data: user } = await authService.getSelf();
+      dispatch(setCredentials({ user }));
+      // navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {

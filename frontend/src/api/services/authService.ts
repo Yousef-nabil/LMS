@@ -8,7 +8,7 @@ export const authService = {
   },
 
   signup: async (data: SignupRequest) => {
-    const response = await api.post("/auth/register", data);
+    const response = await api.post("/auth/signup", data);
     return response.data;
   },
 
@@ -18,7 +18,7 @@ export const authService = {
   },
 
   getSelf: async () => {
-    const response = await api.get("/auth/me");
+    const response = await api.get("/users/info");
     return response.data;
   },
 };

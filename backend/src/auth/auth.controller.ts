@@ -21,18 +21,18 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
-
+      sameSite: 'lax',
+      secure: false,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure:true
-
+      sameSite: 'lax',
+      secure: false,
     });
 
-    return { sucess: true };
+    return { success: true };
   }
   @Post('login')
   async login(
@@ -43,15 +43,15 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
-
+      sameSite: 'lax',
+      secure: false,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure:true
-
+      sameSite: 'lax',
+      secure: false,
     });
     return { success: true }
   }
@@ -68,7 +68,8 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure:true
+      sameSite: 'lax',
+      secure: false,
     });
     return { success: true }
   }
