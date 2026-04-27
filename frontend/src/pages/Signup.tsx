@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useState } from "react";
 import {BookOpen, Users, Check, Circle } from "lucide-react";
 import logoIcon from "../assets/icon.png";
@@ -9,12 +9,10 @@ import AlertCard from "../components/AlertCard";
 import type { SignupRequest, SignupErrors, Role } from "../types/auth";
 import { authService } from "../api";
 import { validateSignup } from "../utils/helper";
-import { useAppDispatch } from "../store/hooks";
-import { setCredentials } from "../store/slices/authSlice";
+import { useAuth } from "../hooks/useAuth";
 
 export function SignupPage() {
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const { authenticate } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,10 +32,7 @@ export function SignupPage() {
     setLoading(true);
     try {
       const data: SignupRequest = { name, email, password, role: role as Role };
-      await authService.signup(data);
-      const { data: user } = await authService.getSelf();
-      dispatch(setCredentials({ user }));
-      // navigate('/dashboard');
+      await authenticate(() => authService.signup(data));
     } catch (err: any) {
       setError(err.response?.data?.message || "Signup failed. Please try again.");
     } finally {
