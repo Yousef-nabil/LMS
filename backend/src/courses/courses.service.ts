@@ -1,28 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { CoursesRepository } from './courses.repository';
 import { CourseListItemDto } from './dto/course-list-item.dto';
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly coursesRepo: CoursesRepository) {}
 
   async findAllForEnrollment(): Promise<CourseListItemDto[]> {
-    const courses = await this.prisma.courses.findMany({
-      select: {
-        title: true,
-        description: true,
-        price: true,
-        created_at: true,
-        users: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
+    const courses = await this.coursesRepo.findAllForEnrollment();
 
     return courses.map((course) => ({
       instructorName: course.users.name,
