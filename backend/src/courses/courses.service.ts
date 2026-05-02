@@ -4,18 +4,18 @@ import { CoursesRepo } from './courses.repo';
 @Injectable()
 export class CoursesService {
   constructor(private coursesRepo: CoursesRepo) {}
-  async getCourseContent(courseId: number) {
+  async getCourseContent(courseId: bigint) {
     return await this.coursesRepo.getCourseContent(courseId);
   }
-  async getCourseEnrollments(courseId: number, offset: number, limit: number) {
-    return await this.coursesRepo.getCourseEntrollments(
+  async getCourseEnrollments(courseId: bigint, offset: number, limit: number) {
+    return await this.coursesRepo.getCourseEnrollments(
       courseId,
       offset,
       limit,
     );
   }
   async getCoursesAnnouncements(
-    courseId: number,
+    courseId: bigint,
     offset: number,
     limit: number,
   ) {
@@ -25,10 +25,22 @@ export class CoursesService {
       limit,
     );
   }
-  async getCourseAssignments(courseId: number, offset: number, limit: number) {
+  async getCourseAssignments(courseId: bigint, offset: number, limit: number) {
     return await this.coursesRepo.getCourseAssignments(courseId, offset, limit);
   }
-  async updateCourseItemOrder(courseId: number) {
-    return await this.coursesRepo.updateCourseItemOrder(courseId);
+
+
+  async reorderContent(
+    courseId: bigint,
+    contentId: bigint,
+    prevId: bigint | null,
+    nextId: bigint | null,
+  ) {
+    return await this.coursesRepo.reorderContent(
+      courseId,
+      contentId,
+      prevId,
+      nextId,
+    );
   }
 }

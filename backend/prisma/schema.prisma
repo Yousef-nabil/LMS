@@ -30,14 +30,18 @@ model assignments {
 }
 
 model contents {
-  id        BigInt       @id @default(autoincrement())
-  course_id BigInt
-  title     String       @db.VarChar(255)
-  type      content_type
-  file_url  String?      @db.VarChar(500)
-  file_size BigInt?
-  position  Int          @default(0)
-  courses   courses      @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id            BigInt       @id @default(autoincrement())
+  course_id     BigInt
+  title         String       @db.VarChar(255)
+  type          content_type
+  file_url      String?      @db.VarChar(500)
+  file_size     BigInt?
+  position      String @db.VarChar(50) // changed the datatype to string for ranking
+
+
+  thumbnail_url String?
+  courses       courses      @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([course_id, position]) // for sorting
 }
 
 model courses {
@@ -109,6 +113,7 @@ model users {
   email          String           @unique @db.VarChar(255)
   password_hash  String           @db.VarChar(255)
   role           user_role
+  google_sub     String?
   announcements  announcements[]
   courses        courses[]
   enrollments    enrollments[]
