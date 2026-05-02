@@ -6,6 +6,10 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
+interface AuthenticatedRequest extends Request {
+  user: any;
+}
+
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
@@ -32,8 +36,10 @@ export class AuthController {
 
     });
 
-    return { sucess: true };
+    return { success: true };
   }
+
+  
   @Post('login')
   async login(
     @Body() payload: LoginDto,
@@ -55,6 +61,8 @@ export class AuthController {
     });
     return { success: true }
   }
+
+
   @Post('/refresh')
   async refresh(
     @Req() req: Request,
@@ -72,6 +80,8 @@ export class AuthController {
     });
     return { success: true }
   }
+
+  
   @Post('/logout')
   async logout(
     @Req() req: Request,
@@ -95,7 +105,7 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleCallback(
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
     const res = await this.authService.googleLogin(req.user as any);

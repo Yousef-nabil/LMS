@@ -114,6 +114,8 @@ export class AuthService {
       refresh_token,
     };
   }
+
+
   async generateAccessToken(userId: bigint, email: string) {
     const payload = { sub: userId.toString(), email };
     const access_token = await this.jwtService.signAsync(payload, {
@@ -150,6 +152,8 @@ export class AuthService {
     await this.saveRefreshToken(user.id, tokens.refresh_token);
     return tokens
   }
+
+
   async RefreshToken(token: string) {
     const hashed = createHash('sha256').update(token).digest('hex');
     const isValidToken = await this.authRepo.validateRefreshToken({
@@ -168,6 +172,8 @@ export class AuthService {
       throw new ForbiddenException("Invalid session")
     }
   }
+
+
   async logout(token: string) {
     const hashed = createHash('sha256').update(token).digest('hex');
     try {
@@ -178,8 +184,9 @@ export class AuthService {
     catch (e) {
       throw new BadRequestException('invalid credentials')
     }
-
   }
+
+  
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async deleteOldTokens() {
     return await this.authRepo.deleteOldTokens();
