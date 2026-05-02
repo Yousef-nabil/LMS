@@ -13,7 +13,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
     PrismaModule,
     PassportModule.register({ session: false }),
     JwtModule.register({
-      secret: "u01QGzwTcrEGpw7MVWT67Y9E0QvidXKNAVFMhrLMFsr",
+      secret: 'u01QGzwTcrEGpw7MVWT67Y9E0QvidXKNAVFMhrLMFsr',
       signOptions: {
         expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as StringValue,
       },

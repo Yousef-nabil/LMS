@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
   import { UsersModule } from './users/users.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { CoursesModule } from './courses/courses.module';
 
 @Module({
   imports: [CoursesModule,UsersModule,PrismaModule, AuthModule,ScheduleModule.forRoot(),
@@ -18,6 +19,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
         },
       ],
     }),
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
