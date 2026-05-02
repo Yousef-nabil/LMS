@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException  } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
@@ -13,6 +8,15 @@ import { LoginDto } from './dto/login.dto';
 import { AuthRepo } from './auth.repo';
 import { createHash } from 'crypto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import type { user_role } from '@prisma/client';
+
+type GoogleUser = {
+  provider?: 'google';
+  providerId?: string;
+  email?: string;
+  name?: string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -48,6 +52,41 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email);
 
     // 5. save refresh token in DB
+    await this.saveRefreshToken(user.id, tokens.refresh_token);
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
+  async googleLogin(googleUser: GoogleUser) {
+    const email = googleUser?.email;
+    if (!email) {
+      throw new UnauthorizedException('Google account has no email');
+    }
+
+    const existingUser = await this.prisma.users.findUnique({
+      where: { email },
+    });
+
+    const user =
+      existingUser ??
+      (await this.prisma.users.create({
+        data: {
+          name: googleUser?.name ?? 'Google User',
+          email,
+          // Keep schema unchanged (password_hash required) by setting a random secret.
+          password_hash: await bcrypt.hash(randomUUID(), 10),
+          role: 'student' as user_role,
+        },
+      }));
+
+    const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refresh_token);
 
     return {

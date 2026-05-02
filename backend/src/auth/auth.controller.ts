@@ -1,3 +1,4 @@
+
 import {
   BadRequestException,
   Body,
@@ -7,8 +8,12 @@ import {
   Req,
   Res,
   UseGuards,
+  Get
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+
+
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -29,16 +34,18 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure: true,
+      sameSite: 'lax',
+      secure: false,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: true,
+      sameSite: 'lax',
+      secure: false,
     });
 
-    return { sucess: true };
+    return { success: true };
   }
   @Post('login')
   async login(
@@ -49,13 +56,15 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure: true,
+      sameSite: 'lax',
+      secure: false,
     });
 
     response.cookie('refresh_token', res.refresh_token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: true,
+      sameSite: 'lax',
+      secure: false,
     });
     return { success: true };
   }
@@ -72,7 +81,8 @@ export class AuthController {
     response.cookie('access_token', res.access_token, {
       httpOnly: true,
       maxAge: 30 * 60 * 1000,
-      secure: true,
+      sameSite: 'lax',
+      secure: false,
     });
     return { success: true };
   }
@@ -88,5 +98,32 @@ export class AuthController {
     response.clearCookie('access_token');
     response.clearCookie('refresh_token');
     return { success: true };
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  google() {
+    // redirects to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const res = await this.authService.googleLogin(req.user as any);
+
+    response.cookie('access_token', res.access_token, {
+      httpOnly: true,
+      maxAge: 30 * 60 * 1000,
+    });
+
+    response.cookie('refresh_token', res.refresh_token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return { user: res.user };
   }
 }
