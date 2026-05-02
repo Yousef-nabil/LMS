@@ -8,9 +8,12 @@ import {
     Post,
     Put,
     Query,
+    UseGuards,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { ReorderContentDto, CreateContentDto } from './courses.dto';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+
 
 // parse and validate a single ID param, throwing 400 if invalid
 function parseId(raw: string, label = 'ID'): bigint {
@@ -39,7 +42,7 @@ function parsePagination(
     return { offset: (pageNum - 1) * limitNum, limitNum };
 }
 
-
+@UseGuards(JwtAuthGuard)
 @Controller('courses')
 export class CoursesController {
     constructor(private readonly coursesService: CoursesService) { }
