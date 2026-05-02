@@ -1,7 +1,7 @@
 import { useAppDispatch } from '../store/hooks';
 import { useNavigate } from 'react-router';
 import { authService } from '../api';
-import { setCredentials, logoutUser } from '../store/slices/authSlice';
+import { setCredentials, logoutUser, setInitialized } from '../store/slices/authSlice';
 
 export function useAuth() {
   const dispatch = useAppDispatch();
@@ -12,14 +12,30 @@ export function useAuth() {
     await authFn();
     const { data: user } = await authService.getSelf();
     dispatch(setCredentials({ user }));
-    navigate('/dashboard');
+    if (user.role === 'instructor') {
+      navigate('/instructor/dashboard');
+    } else {
+      navigate('/student/dashboard');
+    }
   };
 
   const logout = async () => {
-    await authService.logout();
-    dispatch(logoutUser());
-    navigate('/login');
+    try {
+      await authService.logout();
+    } finally {
+      dispatch(logoutUser());
+      window.location.href = '/';
+    }
   };
 
-  return { authenticate, logout };
+  const checkAuth = async () => {
+    try {
+      const { data: user } = await authService.getSelf();
+      dispatch(setCredentials({ user }));
+    } catch (error) {
+      dispatch(setInitialized());
+    }
+  };
+
+  return { authenticate, logout, checkAuth };
 }

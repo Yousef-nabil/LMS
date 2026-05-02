@@ -35,7 +35,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       onClick={toggleTheme}
-      className={`relative p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors ${className}`}
+      className={`relative p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors ${className} cursor-pointer`}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       <motion.div
