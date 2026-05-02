@@ -1,16 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { generateKeyBetween } from 'fractional-indexing';
-import {
-    BadRequestException,
-    NotFoundException,
-} from '@nestjs/common';
+import { CreateContentDto } from './courses.dto';
 
 @Injectable()
 export class CoursesRepo {
     constructor(private prisma: PrismaService) { }
 
+    // throws 404 if course doesn't exist
+    private async assertCourseExists(courseId: bigint): Promise<void> {
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            select: { id: true },
+        });
+        if (!course) {
+            throw new NotFoundException(`Course ${courseId} not found`);
+        }
+    }
+
     async getCourseContent(courseId: bigint) {
+        await this.assertCourseExists(courseId);
+
         return await this.prisma.contents.findMany({
             where: { course_id: courseId },
             orderBy: { position: 'asc' },
@@ -18,6 +28,8 @@ export class CoursesRepo {
     }
 
     async getCourseEnrollments(courseId: bigint, offset: number, limit: number) {
+        await this.assertCourseExists(courseId);
+
         return await this.prisma.enrollments.findMany({
             where: { course_id: courseId },
             skip: offset,
@@ -30,6 +42,8 @@ export class CoursesRepo {
     }
 
     async getCoursesAnnouncements(courseId: bigint, offset: number, limit: number) {
+        await this.assertCourseExists(courseId);
+
         return await this.prisma.announcements.findMany({
             where: { course_id: courseId },
             skip: offset,
@@ -42,6 +56,8 @@ export class CoursesRepo {
     }
 
     async getCourseAssignments(courseId: bigint, offset: number, limit: number) {
+        await this.assertCourseExists(courseId);
+
         return await this.prisma.assignments.findMany({
             where: { course_id: courseId },
             skip: offset,
@@ -50,10 +66,13 @@ export class CoursesRepo {
         });
     }
 
-    async createContent(courseId: bigint, data: any) {
+    async createContent(courseId: bigint, data: CreateContentDto) {
+        await this.assertCourseExists(courseId);
+
         const lastItem = await this.prisma.contents.findFirst({
             where: { course_id: courseId },
             orderBy: { position: 'desc' },
+            select: { position: true },
         });
 
         const newRank = generateKeyBetween(lastItem?.position ?? null, null);
@@ -75,31 +94,24 @@ export class CoursesRepo {
     ) {
         return await this.prisma.$transaction(async (tx) => {
 
-
-            // if prevId and nextId are equal to contentId, that means the item is trying to be moved relative to itself, which is a no-op and likely a client error
-            if (prevId === contentId || nextId === contentId) {
-                throw new BadRequestException(
-                    'prevId and nextId cannot be the same as contentId',
-                );
+            // item can't be placed relative to itself
+            if (prevId !== null && prevId === contentId) {
+                throw new BadRequestException('prevId cannot be the same as contentId');
+            }
+            if (nextId !== null && nextId === contentId) {
+                throw new BadRequestException('nextId cannot be the same as contentId');
             }
 
-            // prevId and nextId can't be the same
+            // prev and next must be different items
             if (prevId !== null && nextId !== null && prevId === nextId) {
                 throw new BadRequestException('prevId and nextId cannot be the same');
             }
 
-            // the content being moved must exist and belong to the specified course
-            const content = await tx.contents.findFirst({
-                where: { id: contentId, course_id: courseId },
-            });
-            if (!content) {
-                throw new NotFoundException(
-                    `Content ${contentId} not found in course ${courseId}`,
-                );
-            }
-
-            // verify prevId and nextId belong to the same course 
-            const [prev, next] = await Promise.all([
+            // fetch all three rows in one step
+            const [content, prev, next] = await Promise.all([
+                tx.contents.findFirst({
+                    where: { id: contentId, course_id: courseId },
+                }),
                 prevId
                     ? tx.contents.findFirst({ where: { id: prevId, course_id: courseId } })
                     : null,
@@ -108,6 +120,12 @@ export class CoursesRepo {
                     : null,
             ]);
 
+            // validate all three exist in this course
+            if (!content) {
+                throw new NotFoundException(
+                    `Content ${contentId} not found in course ${courseId}`,
+                );
+            }
             if (prevId && !prev) {
                 throw new NotFoundException(
                     `prevId ${prevId} not found in course ${courseId}`,
@@ -119,14 +137,14 @@ export class CoursesRepo {
                 );
             }
 
-            // prevId must come before nextId in the current order
+            // prev must come before next in the current order
             if (prev && next && prev.position >= next.position) {
                 throw new BadRequestException(
                     'prevId must come before nextId in the current order',
                 );
             }
 
-            // generate a new position between prev and next
+            // generate the new rank between prev and next
             let newRank: string;
             try {
                 newRank = generateKeyBetween(
@@ -134,19 +152,17 @@ export class CoursesRepo {
                     next?.position ?? null,
                 );
             } catch {
-                // fractional-indexing throws when there is no space left between
-                // two adjacent keys — this should be extremely rare with rebalancing
                 throw new BadRequestException(
                     'No space left between the two positions. Please trigger a rebalance.',
                 );
             }
 
-            // if the new rank leads to the same position then there's no need to update
+            // skip the update if the item is already in the correct position
             if (newRank === content.position) {
-                return content; // nothing to do
+                return content;
             }
 
-            // update the content with the new position in O(1) time
+            // update the item's position in O(1) time
             return await tx.contents.update({
                 where: { id: contentId },
                 data: { position: newRank },
