@@ -1,9 +1,13 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException  } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
+import { LoginDto } from './dto/login.dto';
+import { AuthRepo } from './auth.repo';
+import { createHash } from 'crypto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import type { user_role } from '@prisma/client';
 
 type GoogleUser = {
@@ -18,7 +22,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+    private authRepo: AuthRepo
+  ) { }
 
   async signup(dto: SignupDto) {
     // 1. check existing
@@ -102,24 +107,98 @@ export class AuthService {
       expiresIn: '30m',
     });
 
-    const refresh_token = randomUUID(); 
+    const refresh_token = randomUUID();
 
     return {
       access_token,
       refresh_token,
     };
   }
+  async generateAccessToken(userId: bigint, email: string) {
+    const payload = { sub: userId.toString(), email };
+    const access_token = await this.jwtService.signAsync(payload, {
+      expiresIn: '30m',
+    });
+    return {
+      access_token
+    };
+  }
 
   // Save refresh token
   async saveRefreshToken(userId: bigint, token: string) {
-    const hashed = await bcrypt.hash(token, 10);
-
-    await this.prisma.refresh_tokens.create({
-      data: {
-        user_id: userId,
-        token: hashed,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
+    const hashed = createHash('sha256').update(token).digest('hex'); //better for fast compare
+    return await this.authRepo.createRefreshToken({
+      userId: Number(userId),
+      token: hashed
     });
+  }
+
+  async login(payload: LoginDto) {
+    const user = await this.prisma.users.findUnique({
+      where: { email: payload.email },
+    });
+    if (!user) {
+      throw new NotFoundException('invalid credentials');
+    }
+
+    const isMatch = await bcrypt.compare(payload.password, user.password_hash);
+    if (!isMatch) {
+      throw new ForbiddenException('invalid credentials');
+    }
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    await this.saveRefreshToken(user.id, tokens.refresh_token);
+    return tokens;
+  }
+  async RefreshToken(token: string) {
+    const hashed = createHash('sha256').update(token).digest('hex');
+    const isValidToken = await this.authRepo.validateRefreshToken({
+      token: hashed
+    })
+    if (isValidToken) {
+      const user = await this.prisma.users.findUnique({
+        where: { id: isValidToken.user_id },
+      });
+      if (!user) {
+        throw new BadRequestException("User not found")
+      }
+      return await this.generateAccessToken(user.id, user.email)
+    }
+    else {
+      throw new ForbiddenException("Invalid session")
+    }
+  }
+  async logout(token: string) {
+    const hashed = createHash('sha256').update(token).digest('hex');
+    try {
+      await this.authRepo.revokeRefreshToken({
+        token: hashed
+      })
+    }
+    catch (e) {
+      throw new BadRequestException('invalid credentials')
+    }
+
+  }
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async deleteOldTokens() {
+    return await this.authRepo.deleteOldTokens();
+  }
+  async googleAuth(idToken: string) {
+    /*
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) throw new Error('Invalid token');
+
+    const email = payload.email;
+    const googleId = payload.sub;
+
+    */
+
   }
 }
