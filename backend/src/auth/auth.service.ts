@@ -148,7 +148,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email);
 
     await this.saveRefreshToken(user.id, tokens.refresh_token);
-    return tokens
+    return tokens;
   }
   async RefreshToken(token: string) {
     const hashed = createHash('sha256').update(token).digest('hex');
