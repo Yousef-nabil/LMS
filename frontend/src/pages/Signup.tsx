@@ -22,18 +22,24 @@ export function SignupPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<SignupErrors>({});
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const errors = validateSignup(name, email, password, confirmPassword, role);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
     setError("");
+
     setLoading(true);
     try {
+
       const data: SignupRequest = { name, email, password, role: role as Role };
-      await authenticate(() => authService.signup(data));
+      console.log(data)
+      const res=await authenticate(() => authService.signup(data));
+    //  console.log(res)
+
     } catch (err: any) {
+    //  console.log(err)
       setError(err.response?.data?.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);

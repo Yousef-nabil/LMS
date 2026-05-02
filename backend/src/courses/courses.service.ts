@@ -2,14 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CoursesRepo } from './courses.repo';
 import { CreateContentDto } from './courses.dto';
 
-import { CoursesRepository } from './courses.repository';
-import { CourseListItemDto } from './dto/course-list-item.dto';
-
 @Injectable()
 export class CoursesService {
   constructor(
     private coursesRepo: CoursesRepo,
-    private readonly coursesRepo2: CoursesRepository,
   ) {}
 
   async getCourseContent(courseId: bigint) {
@@ -46,15 +42,7 @@ export class CoursesService {
     );
   }
 
-  async findAllForEnrollment(): Promise<CourseListItemDto[]> {
-    const courses = await this.coursesRepo2.findAllForEnrollment();
-
-    return courses.map((course) => ({
-      instructorName: course.users.name,
-      title: course.title,
-      description: course.description,
-      price: course.price ? course.price.toString() : null,
-      createdAt: course.created_at.toISOString(),
-    }));
+  async findAllForEnrollment() {
+    return await this.coursesRepo.findAllForEnrollment();
   }
 }

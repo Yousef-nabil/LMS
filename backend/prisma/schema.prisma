@@ -36,12 +36,9 @@ model contents {
   type          content_type
   file_url      String?      @db.VarChar(500)
   file_size     BigInt?
-  position      String @db.VarChar(50) // changed the datatype to string for ranking
-
-
+  position      String?      @db.VarChar(50)
   thumbnail_url String?
   courses       courses      @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  @@index([course_id, position]) // for sorting
 }
 
 model courses {

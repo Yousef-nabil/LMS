@@ -12,7 +12,11 @@ export const setupInterceptors = (api: AxiosInstance) => {
   api.interceptors.response.use(
     (response) => response,
     async (error) => {
+      console.log(error)
       const originalRequest = error.config;
+  if (!originalRequest) {
+    return Promise.reject(error);
+  }
 
       if (originalRequest.url?.includes('/auth/refresh')) {
         return Promise.reject(error);

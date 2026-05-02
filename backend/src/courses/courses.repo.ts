@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from 'src/prisma/prisma.service';
 import { generateKeyBetween } from 'fractional-indexing';
 import { CreateContentDto } from './courses.dto';
+import { CourseListItemDto } from './dto/course-list-item.dto';
 
 @Injectable()
 export class CoursesRepo {
@@ -13,9 +14,36 @@ export class CoursesRepo {
             where: { id: courseId },
             select: { id: true },
         });
-        if (!course) {
+if (!course) {
             throw new NotFoundException(`Course ${courseId} not found`);
         }
+        }
+
+    async findAllForEnrollment(): Promise<CourseListItemDto[]> {
+        const courses = await this.prisma.courses.findMany({
+            select: {
+                title: true,
+                description: true,
+                price: true,
+                created_at: true,
+                users: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+            orderBy: {
+                created_at: 'desc',
+            },
+        });
+
+        return courses.map((course) => ({
+            instructorName: course.users.name,
+            title: course.title,
+            description: course.description,
+            price: course.price ? course.price.toString() : null,
+            createdAt: course.created_at.toISOString(),
+        }));
     }
 
     async getCourseContent(courseId: bigint) {
@@ -138,7 +166,7 @@ export class CoursesRepo {
             }
 
             // prev must come before next in the current order
-            if (prev && next && prev.position >= next.position) {
+            if (prev && next &&next.position&&prev.position && prev?.position >= next?.position) {
                 throw new BadRequestException(
                     'prevId must come before nextId in the current order',
                 );
