@@ -1,5 +1,5 @@
-import apiClient from "./client";
-import { setupInterceptors } from "./interceptors";
+import apiClient from './client';
+import { setupInterceptors } from './interceptors';
 
 // Initialize interceptors
 setupInterceptors(apiClient);
@@ -8,4 +8,5 @@ setupInterceptors(apiClient);
 export default apiClient;
 
 // Re-export all services
-export { authService } from "./services/authService";
+export { authService } from './services/authService';
+export { instructorService } from './services/instructorService';

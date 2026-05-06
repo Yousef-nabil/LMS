@@ -120,10 +120,13 @@ export class InstructorRepo {
     const rows = await this.prisma.payments.findMany({
       where: { course_id: courseId },
       orderBy: { transaction_date: 'desc' },
+      include: { users: { select: { id: true, name: true, email: true } } },
     });
     return rows.map((r) => ({
       id: r.id.toString(),
       studentId: r.student_id.toString(),
+      studentName: r.users?.name ?? null,
+      studentEmail: r.users?.email ?? null,
       amount: r.amount.toString(),
       status: r.status,
       date: r.transaction_date.toISOString(),
