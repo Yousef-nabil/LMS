@@ -10,13 +10,8 @@ import {
     IsNumber,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { content_type } from '@prisma/client';
 
-enum ContentType {
-    video = 'video',
-    document = 'document',
-    quiz = 'quiz',
-    assignment = 'assignment',
-}
 
 export class CreateContentDto {
     @IsNotEmpty({ message: 'title is required' })
@@ -25,8 +20,8 @@ export class CreateContentDto {
     title: string;
 
     @IsNotEmpty({ message: 'type is required' })
-    @IsEnum(ContentType, { message: 'type must be either video or document' })
-    type: ContentType;
+    @IsEnum(content_type, { message: 'type must be a valid content type' })
+    type: content_type;
 
     @IsOptional()
     @Transform(({ value }) => (value === 'null' || value === 'undefined' || value === '' ? undefined : value))
