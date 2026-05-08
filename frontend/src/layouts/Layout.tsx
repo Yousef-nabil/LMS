@@ -19,7 +19,7 @@ export function Layout() {
   ];
 
   const instructorNav = [
-    { path: "/instructor/dashboard", label: "My Courses", icon: Home },
+    { path: "/instructor/my-courses", label: "My Courses", icon: Home },
     { path: "/instructor/create", label: "Create Course", icon: PlusCircle },
     { path: "/instructor/analytics", label: "Analytics", icon: BarChart3 },
   ];

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { LandingPage } from "../pages/LandingPage";
 import { LoginPage } from "../pages/LoginPage";
 import { SignupPage } from "../pages/Signup";
@@ -7,6 +7,11 @@ import { Layout } from "../layouts/Layout";
 import { PublicRoute } from "../components/PublicRoute";
 import { RoleRoute } from "../components/RoleRoute";
 import { AuthWrapper } from "../components/AuthWrapper";
+
+import { CreateCourse } from "../pages/instructor/CreateCourse";
+import { EditCourse } from "../pages/instructor/EditCourse";
+import { ManageCourse } from "../pages/instructor/ManageCourse";
+import { InstructorMyCourses } from "../pages/instructor/MyCourses";
 
 export const router = createBrowserRouter([
   {
@@ -50,8 +55,12 @@ export const router = createBrowserRouter([
                 path: "instructor",
                 element: <RoleRoute allowedRole="instructor" />,
                 children: [
-                  { path: "dashboard", element: <div>Instructor Dashboard</div> },
-                  { path: "create", element: <div>Create Course</div> },
+                  { index: true, element: <Navigate to="my-courses" replace /> },
+                  { path: "dashboard", element: <Navigate to="../my-courses" replace /> },
+                  { path: "my-courses", element: <InstructorMyCourses /> },
+                  { path: "create", element: <CreateCourse /> },
+                  { path: "edit/:id", element: <EditCourse /> },
+                  { path: "manage/:id", element: <ManageCourse /> },
                   { path: "analytics", element: <div>Analytics</div> },
                 ],
               },

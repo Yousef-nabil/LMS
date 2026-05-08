@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { generateKeyBetween } from 'fractional-indexing';
-import { CreateContentDto } from './courses.dto';
+import { CreateContentDto, CreateCourseDto, UpdateCourseDto } from './courses.dto';
 import { CourseListItemDto } from './dto/course-list-item.dto';
 
 @Injectable()
@@ -17,13 +17,48 @@ export class CoursesRepo {
 if (!course) {
             throw new NotFoundException(`Course ${courseId} not found`);
         }
+    }
+
+    private mapToDto(course: any): CourseListItemDto {
+        return {
+            id: course.id.toString(),
+            instructorName: course.users?.name || '',
+            title: course.title,
+            description: course.description,
+            thumbnailUrl: course.thumbnail_url,
+            price: course.price ? course.price.toString() : null,
+            createdAt: course.created_at.toISOString(),
+            enrollmentsCount: course._count?.enrollments,
+        };
+    }
+
+    async findById(courseId: bigint): Promise<CourseListItemDto> {
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            include: {
+                _count: {
+                    select: { enrollments: true }
+                },
+                users: {
+                    select: { name: true }
+                }
+            },
+        });
+
+        if (!course) {
+            throw new NotFoundException(`Course ${courseId} not found`);
         }
+
+        return this.mapToDto(course);
+    }
 
     async findAllForEnrollment(): Promise<CourseListItemDto[]> {
         const courses = await this.prisma.courses.findMany({
             select: {
+                id: true,
                 title: true,
                 description: true,
+                thumbnail_url: true,
                 price: true,
                 created_at: true,
                 users: {
@@ -37,13 +72,94 @@ if (!course) {
             },
         });
 
-        return courses.map((course) => ({
-            instructorName: course.users.name,
-            title: course.title,
-            description: course.description,
-            price: course.price ? course.price.toString() : null,
-            createdAt: course.created_at.toISOString(),
-        }));
+        return courses.map((course) => this.mapToDto(course));
+    }
+
+    async findByInstructorId(instructorId: bigint): Promise<CourseListItemDto[]> {
+        const courses = await this.prisma.courses.findMany({
+            where: { instructor_id: instructorId },
+            include: {
+                _count: {
+                    select: { enrollments: true }
+                },
+                users: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { created_at: 'desc' },
+        });
+
+        return courses.map((course) => this.mapToDto(course));
+    }
+
+    async createCourse(instructorId: bigint, data: CreateCourseDto): Promise<CourseListItemDto> {
+        if (!data) {
+            console.error('createCourse: data is undefined', { instructorId });
+            throw new BadRequestException('Course data is required');
+        }
+        const { thumbnailUrl, ...rest } = data;
+        const course = await this.prisma.courses.create({
+            data: {
+                ...rest,
+                thumbnail_url: thumbnailUrl,
+                instructor_id: instructorId,
+            },
+            include: {
+                users: { select: { name: true } },
+                _count: { select: { enrollments: true } },
+            },
+        });
+        return this.mapToDto(course);
+    }
+
+    async updateCourse(courseId: bigint, instructorId: bigint, data: UpdateCourseDto): Promise<CourseListItemDto> {
+        if (!data) {
+            console.error('updateCourse: data is undefined', { courseId, instructorId });
+            throw new BadRequestException('Update data is required');
+        }
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+        });
+
+        if (!course) {
+            throw new NotFoundException(`Course ${courseId} not found`);
+        }
+
+        if (course.instructor_id !== instructorId) {
+            throw new BadRequestException('You are not authorized to update this course');
+        }
+
+        const { thumbnailUrl, ...rest } = data;
+        const updated = await this.prisma.courses.update({
+            where: { id: courseId },
+            data: {
+                ...rest,
+                thumbnail_url: thumbnailUrl,
+            },
+            include: {
+                users: { select: { name: true } },
+                _count: { select: { enrollments: true } },
+            },
+        });
+        return this.mapToDto(updated);
+    }
+
+    async deleteCourse(courseId: bigint, instructorId: bigint) {
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+        });
+
+        if (!course) {
+            throw new NotFoundException(`Course ${courseId} not found`);
+        }
+
+        if (course.instructor_id !== instructorId) {
+            throw new BadRequestException('You are not authorized to delete this course');
+        }
+
+        return await this.prisma.courses.delete({
+            where: { id: courseId },
+        });
     }
 
     async getCourseContent(courseId: bigint) {
@@ -52,6 +168,17 @@ if (!course) {
         return await this.prisma.contents.findMany({
             where: { course_id: courseId },
             orderBy: { position: 'asc' },
+        });
+    }
+
+    async deleteContent(courseId: bigint, contentId: bigint) {
+        await this.assertCourseExists(courseId);
+
+        return await this.prisma.contents.delete({
+            where: {
+                id: contentId,
+                course_id: courseId,
+            },
         });
     }
 
@@ -105,9 +232,14 @@ if (!course) {
 
         const newRank = generateKeyBetween(lastItem?.position ?? null, null);
 
+        const { fileUrl, fileSize, thumbnailUrl, ...rest } = data;
+
         return this.prisma.contents.create({
             data: {
-                ...data,
+                ...rest,
+                file_url: fileUrl,
+                file_size: fileSize,
+                thumbnail_url: thumbnailUrl,
                 course_id: courseId,
                 position: newRank,
             },
