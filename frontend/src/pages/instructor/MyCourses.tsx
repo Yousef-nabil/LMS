@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { Plus, Trash2, Home, BookOpen, Users, DollarSign } from "lucide-react";
 import { courseService } from "../../api/services/courseService";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import AlertCard from "../../components/AlertCard";
 import type { Course } from "../../types/course";
 
 export function InstructorMyCourses() {
@@ -11,6 +12,7 @@ export function InstructorMyCourses() {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -18,7 +20,7 @@ export function InstructorMyCourses() {
         const data = await courseService.getInstructorCourses();
         setCourses(data);
       } catch (err) {
-        console.error("Failed to fetch courses", err);
+        setError("Failed to fetch courses");
       } finally {
         setLoading(false);
       }
@@ -34,7 +36,7 @@ export function InstructorMyCourses() {
       setCourses(courses.filter(c => c.id !== deleteId));
       setDeleteId(null);
     } catch (err) {
-      console.error("Failed to delete course", err);
+      setError("Failed to delete course");
     } finally {
       setIsDeleting(false);
     }
@@ -70,6 +72,14 @@ export function InstructorMyCourses() {
           </motion.button>
         </Link>
       </div>
+
+      {error && (
+        <AlertCard 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+        />
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}

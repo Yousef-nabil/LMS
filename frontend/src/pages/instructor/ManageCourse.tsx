@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { courseService } from "../../api/services/courseService";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import AlertCard from "../../components/AlertCard";
 
 interface ContentItem {
   id: string;
@@ -58,7 +59,7 @@ export function ManageCourse() {
         );
         setContents(sorted);
       } catch (err) {
-        console.error("Failed to fetch data", err);
+        setError("Failed to fetch course data");
       } finally {
         setLoading(false);
       }
@@ -67,10 +68,11 @@ export function ManageCourse() {
   }, [id]);
 
   const handleAddContent = async () => {
-    if (!id || !newTitle || !selectedFile) return;
+    const isFileRequired = newType !== 'quiz' && newType !== 'assignment';
+    if (!id || !newTitle || (isFileRequired && !selectedFile)) return;
     
     let progressInterval: any;
-    const fileSizeMB = selectedFile.size / (1024 * 1024);
+    const fileSizeMB = selectedFile ? selectedFile.size / (1024 * 1024) : 0;
     // Estimate cloud processing time: ~1 second per 5MB + 1s base
     const estimatedCloudSeconds = Math.max(2, Math.ceil(fileSizeMB / 5));
     const crawlStepMs = (estimatedCloudSeconds * 1000) / 10; // Divide total time into 10 steps (90% to 99%)
@@ -85,8 +87,8 @@ export function ManageCourse() {
         {
           title: newTitle,
           type: newType,
-          file: selectedFile,
-          thumbnail: selectedThumbnail,
+          file: selectedFile || undefined,
+          thumbnail: selectedThumbnail || undefined,
         },
         (progress) => {
           if (progress === 100) {
@@ -123,7 +125,7 @@ export function ManageCourse() {
       }, 500);
     } catch (err) {
       clearInterval(progressInterval!);
-      console.error("Failed to add content", err);
+      setError("Failed to add lesson content");
     } finally {
       setIsUploading(false);
     }
@@ -137,7 +139,7 @@ export function ManageCourse() {
       setContents(contents.filter(item => item.id !== deleteContentId));
       setDeleteContentId(null);
     } catch (err) {
-      console.error("Failed to delete content", err);
+      setError("Failed to delete lesson content");
     } finally {
       setIsDeleting(false);
     }
@@ -170,7 +172,7 @@ export function ManageCourse() {
         );
         setContents(sorted);
       } catch (err) {
-        console.error("Failed to persist new order", err);
+        setError("Failed to save new lesson order");
       }
     }
   };
@@ -195,6 +197,14 @@ export function ManageCourse() {
           <p className="text-muted-foreground text-sm">Curriculum Builder & Content Management</p>
         </div>
       </div>
+
+      {error && (
+        <AlertCard 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+        />
+      )}
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Builder Area */}
@@ -257,39 +267,43 @@ export function ManageCourse() {
                   </button>
                 </div>
 
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept={newType === 'video' ? "video/*" : newType === 'document' ? ".pdf,.doc,.docx,.txt" : "*/*"}
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    disabled={isUploading}
-                  />
-                  <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                    <div className="text-sm font-medium text-foreground">
-                      {selectedFile ? selectedFile.name : `Select ${newType} file`}
+                {newType !== 'quiz' && newType !== 'assignment' && (
+                  <>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept={newType === 'video' ? "video/*" : newType === 'document' ? ".pdf,.doc,.docx,.txt" : "*/*"}
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={isUploading}
+                      />
+                      <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                        <div className="text-sm font-medium text-foreground">
+                          {selectedFile ? selectedFile.name : `Select ${newType} file`}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` : 'Drag and drop or click to browse'}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` : 'Drag and drop or click to browse'}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setSelectedThumbnail(e.target.files?.[0] || null)}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    disabled={isUploading}
-                  />
-                  <div className={`border-2 border-dashed rounded-xl p-3 text-center transition-colors ${selectedThumbnail ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                    <div className="text-xs font-medium text-foreground flex items-center justify-center gap-2">
-                      <Play className="size-3" />
-                      {selectedThumbnail ? selectedThumbnail.name : 'Add Lesson Thumbnail (Optional)'}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setSelectedThumbnail(e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={isUploading}
+                      />
+                      <div className={`border-2 border-dashed rounded-xl p-3 text-center transition-colors ${selectedThumbnail ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                        <div className="text-xs font-medium text-foreground flex items-center justify-center gap-2">
+                          <Play className="size-3" />
+                          {selectedThumbnail ? selectedThumbnail.name : 'Add Lesson Thumbnail (Optional)'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
 
                 {selectedFile && selectedFile.size > 1024 * 1024 * 1024 && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-xs font-medium flex items-center gap-2">
@@ -324,7 +338,7 @@ export function ManageCourse() {
                 </button>
                 <button 
                   onClick={handleAddContent}
-                  disabled={!newTitle || !selectedFile || isUploading || (selectedFile && selectedFile.size > 1024 * 1024 * 1024)}
+                  disabled={!newTitle || (newType !== 'quiz' && newType !== 'assignment' && !selectedFile) || isUploading || (selectedFile?.size || 0) > 1024 * 1024 * 1024}
                   className="px-6 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
                 >
                   {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}

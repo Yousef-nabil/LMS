@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate, useParams } from "react-router";
 import { courseService } from "../../api/services/courseService";
 import { Loader2, Save } from "lucide-react";
+import AlertCard from "../../components/AlertCard";
 
 export function EditCourse() {
   const { id } = useParams();
@@ -98,9 +99,11 @@ export function EditCourse() {
       </motion.div>
 
       {error && (
-        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-sm">
-          {error}
-        </div>
+        <AlertCard 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+        />
       )}
 
       {/* Course Details */}
