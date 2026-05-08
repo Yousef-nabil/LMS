@@ -19,8 +19,10 @@ if (!course) {
         }
         }
 
-    async findAllForEnrollment(): Promise<CourseListItemDto[]> {
+    async findAllForEnrollment(offset: number, limit: number): Promise<CourseListItemDto[]> {
         const courses = await this.prisma.courses.findMany({
+            skip: offset,
+            take: limit,
             select: {
                 id: true,
                 title: true,

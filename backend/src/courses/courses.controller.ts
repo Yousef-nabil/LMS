@@ -58,8 +58,9 @@ export class CoursesController {
 
   // from development branch
   @Get()
-  async findAll(): Promise<CourseListItemDto[]> {
-    return this.coursesService.findAllForEnrollment();
+  async findAll(@Query('limit') limit = 6, @Query('page') page = 1): Promise<CourseListItemDto[]> {
+    const { offset, limitNum } = parsePagination(limit, page);
+    return this.coursesService.findAllForEnrollment(offset, limitNum);
   }
 
   @Get('/:id/content')

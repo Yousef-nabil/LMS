@@ -2,8 +2,10 @@ import apiClient from "../client";
 import type { Course } from "../../types";
 
 export const courseService = {
-  getAllCourses: async (): Promise<Course[]> => {
-    const response = await apiClient.get("/courses");
+  getAllCourses: async (page = 1, limit = 6): Promise<Course[]> => {
+    const response = await apiClient.get("/courses", {
+      params: { page, limit },
+    });
     return response.data;
   },
 

@@ -10,12 +10,14 @@ export function BrowseCourses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const coursesPerPage = 6;
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        const data = await courseService.getAllCourses();
+        const data = await courseService.getAllCourses(currentPage, coursesPerPage);
         setCourses(data);
       } catch (err) {
         setError("Failed to load courses. Please try again later.");
@@ -26,7 +28,7 @@ export function BrowseCourses() {
     };
 
     fetchCourses();
-  }, []);
+  }, [currentPage]);
 
   const filteredCourses = courses.filter((course) => {
     return (
@@ -135,6 +137,27 @@ export function BrowseCourses() {
           </motion.div>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {filteredCourses.length > 0 && (
+        <div className="flex items-center justify-center space-x-4 mt-12">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-6 py-2 bg-card border border-border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent transition-colors cursor-pointer"
+          >
+            Previous
+          </button>
+          <span className="text-sm font-medium">Page {currentPage}</span>
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={courses.length < coursesPerPage}
+            className="px-6 py-2 bg-card border border-border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent transition-colors cursor-pointer"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {filteredCourses.length === 0 && (
         <motion.div
