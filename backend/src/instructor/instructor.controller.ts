@@ -7,7 +7,10 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { user_role } from '@prisma/client';
+import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 import { InstructorService } from './instructor.service';
 
 function parseId(raw: string, label = 'ID'): bigint {
@@ -37,7 +40,8 @@ function parsePagination(
   return { offset: (pageNum - 1) * limitNum, limitNum };
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(user_role.instructor)
 @Controller('instructor')
 export class InstructorController {
   constructor(private readonly instructorService: InstructorService) {}

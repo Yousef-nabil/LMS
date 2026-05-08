@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException  } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
@@ -49,7 +55,7 @@ export class AuthService {
     });
 
     // 4. generate tokens
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
 
     // 5. save refresh token in DB
     await this.saveRefreshToken(user.id, tokens.refresh_token);
@@ -86,7 +92,7 @@ export class AuthService {
         },
       }));
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.saveRefreshToken(user.id, tokens.refresh_token);
 
     return {
@@ -100,8 +106,8 @@ export class AuthService {
   }
 
   // Generate tokens
-  async generateTokens(userId: bigint, email: string) {
-    const payload = { sub: userId.toString(), email };
+  async generateTokens(userId: bigint, email: string, role: user_role) {
+    const payload = { sub: userId.toString(), email, role };
 
     const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '30m',
@@ -114,8 +120,8 @@ export class AuthService {
       refresh_token,
     };
   }
-  async generateAccessToken(userId: bigint, email: string) {
-    const payload = { sub: userId.toString(), email };
+  async generateAccessToken(userId: bigint, email: string, role: user_role) {
+    const payload = { sub: userId.toString(), email, role };
     const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '30m',
     });
@@ -145,7 +151,7 @@ export class AuthService {
     if (!isMatch) {
       throw new ForbiddenException('invalid credentials');
     }
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
 
     await this.saveRefreshToken(user.id, tokens.refresh_token);
     return tokens;
@@ -162,7 +168,7 @@ export class AuthService {
       if (!user) {
         throw new BadRequestException('User not found');
       }
-      return await this.generateAccessToken(user.id, user.email);
+      return await this.generateAccessToken(user.id, user.email, user.role);
     } else {
       throw new ForbiddenException('Invalid session');
     }
