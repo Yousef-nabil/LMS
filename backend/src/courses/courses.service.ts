@@ -42,7 +42,7 @@ export class CoursesService {
     );
   }
 
-  async findAllForEnrollment(offset: number, limit: number) {
-    return await this.coursesRepo.findAllForEnrollment(offset, limit);
+  async findAllForEnrollment(offset: number, limit: number, search?: string) {
+    return await this.coursesRepo.findAllForEnrollment(offset, limit, search);
   }
 }
