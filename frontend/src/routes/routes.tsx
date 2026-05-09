@@ -7,6 +7,7 @@ import { Layout } from "../layouts/Layout";
 import { PublicRoute } from "../components/PublicRoute";
 import { RoleRoute } from "../components/RoleRoute";
 import { AuthWrapper } from "../components/AuthWrapper";
+import { BrowseCourses } from "../pages/student/BrowseCourses";
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
                 element: <RoleRoute allowedRole="student" />,
                 children: [
                   { path: "dashboard", element: <div>Student Dashboard</div> },
-                  { path: "browse", element: <div>Browse Courses</div> },
+                  { path: "browse", element: <BrowseCourses /> },
                   { path: "grades", element: <div>Grades</div> },
                 ],
               },

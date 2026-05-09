@@ -19,12 +19,22 @@ if (!course) {
         }
         }
 
-    async findAllForEnrollment(): Promise<CourseListItemDto[]> {
+    async findAllForEnrollment(offset: number, limit: number, search?: string): Promise<CourseListItemDto[]> {
         const courses = await this.prisma.courses.findMany({
+            skip: offset,
+            take: limit,
+            where: search ? {
+                OR: [
+                    { title: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } },
+                ],
+            } : {},
             select: {
+                id: true,
                 title: true,
                 description: true,
                 price: true,
+                thumbnail_url: true,
                 created_at: true,
                 users: {
                     select: {
@@ -38,10 +48,12 @@ if (!course) {
         });
 
         return courses.map((course) => ({
+            id: course.id.toString(),
             instructorName: course.users.name,
             title: course.title,
             description: course.description,
             price: course.price ? course.price.toString() : null,
+            thumbnailUrl: course.thumbnail_url,
             createdAt: course.created_at.toISOString(),
         }));
     }
