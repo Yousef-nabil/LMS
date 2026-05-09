@@ -4,20 +4,26 @@ import { CreateContentDto } from './courses.dto';
 
 @Injectable()
 export class CoursesService {
-  constructor(
-    private coursesRepo: CoursesRepo,
-  ) {}
+  constructor(private coursesRepo: CoursesRepo) {}
 
-  async getCourseContent(courseId: bigint) {
-    return await this.coursesRepo.getCourseContent(courseId);
+  async getCourseContentForUser(courseId: bigint, userId: bigint) {
+    return await this.coursesRepo.getCourseContentForUser(courseId, userId);
   }
 
   async getCourseEnrollments(courseId: bigint, offset: number, limit: number) {
     return await this.coursesRepo.getCourseEnrollments(courseId, offset, limit);
   }
 
-  async getCoursesAnnouncements(courseId: bigint, offset: number, limit: number) {
-    return await this.coursesRepo.getCoursesAnnouncements(courseId, offset, limit);
+  async getCoursesAnnouncements(
+    courseId: bigint,
+    offset: number,
+    limit: number,
+  ) {
+    return await this.coursesRepo.getCoursesAnnouncements(
+      courseId,
+      offset,
+      limit,
+    );
   }
 
   async getCourseAssignments(courseId: bigint, offset: number, limit: number) {
@@ -44,5 +50,19 @@ export class CoursesService {
 
   async findAllForEnrollment(offset: number, limit: number, search?: string) {
     return await this.coursesRepo.findAllForEnrollment(offset, limit, search);
+  }
+
+  async findMyEnrolledCourses(
+    userId: bigint,
+    offset: number,
+    limit: number,
+    search?: string,
+  ) {
+    return await this.coursesRepo.findMyEnrolledCourses(
+      userId,
+      offset,
+      limit,
+      search,
+    );
   }
 }
