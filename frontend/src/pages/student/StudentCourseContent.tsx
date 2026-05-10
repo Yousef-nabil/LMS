@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { motion } from 'motion/react';
-import {
-  ArrowLeft,
-  ExternalLink,
-  FileText,
-  Loader2,
-  PlayCircle,
-} from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, PlayCircle } from 'lucide-react';
 import { courseService } from '../../api/services/courseService';
 import type { Course, CourseContent } from '../../types';
 
@@ -172,26 +166,14 @@ export function StudentCourseContent() {
             <video
               key={selectedVideo.id}
               controls
+              controlsList="nodownload"
+              disablePictureInPicture
+              onContextMenu={(event) => event.preventDefault()}
               className="w-full aspect-video bg-black"
               src={selectedVideo.fileUrl}
             >
               Your browser does not support the video tag.
             </video>
-            <div className="p-4 border-t border-border">
-              <button
-                onClick={() =>
-                  window.open(
-                    selectedVideo.fileUrl,
-                    '_blank',
-                    'noopener,noreferrer',
-                  )
-                }
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium cursor-pointer"
-              >
-                <ExternalLink className="size-4" />
-                Open in New Tab
-              </button>
-            </div>
           </div>
         </motion.section>
       )}
