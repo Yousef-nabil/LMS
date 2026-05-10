@@ -111,6 +111,7 @@ model users {
   email          String           @unique @db.VarChar(255)
   password_hash  String           @db.VarChar(255)
   role           user_role
+  profile_picture_url String?
   google_sub     String?
   announcements  announcements[]
   courses        courses[]
