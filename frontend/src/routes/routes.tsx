@@ -10,6 +10,7 @@ import { AuthWrapper } from '../components/AuthWrapper';
 import { BrowseCourses } from '../pages/student/BrowseCourses';
 import { StudentMyCourses } from '../pages/student/StudentMyCourses';
 import { StudentCourseContent } from '../pages/student/StudentCourseContent';
+import { ProfilePage } from '../pages/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
                   { path: 'grades', element: <div>Grades</div> },
                 ],
               },
+              { path: 'profile', element: <ProfilePage /> },
               {
                 path: 'instructor',
                 element: <RoleRoute allowedRole="instructor" />,
