@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+    Injectable,
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { generateKeyBetween } from 'fractional-indexing';
 import { CreateContentDto } from './courses.dto';
@@ -58,8 +63,105 @@ if (!course) {
         }));
     }
 
-    async getCourseContent(courseId: bigint) {
-        await this.assertCourseExists(courseId);
+    async findMyEnrolledCourses(
+        userId: bigint,
+        offset: number,
+        limit: number,
+        search?: string,
+    ): Promise<CourseListItemDto[]> {
+        const enrollments = await this.prisma.enrollments.findMany({
+            where: {
+                student_id: userId,
+                ...(search
+                    ? {
+                          courses: {
+                              is: {
+                                  OR: [
+                                      {
+                                          title: {
+                                              contains: search,
+                                              mode: 'insensitive',
+                                          },
+                                      },
+                                      {
+                                          description: {
+                                              contains: search,
+                                              mode: 'insensitive',
+                                          },
+                                      },
+                                  ],
+                              },
+                          },
+                      }
+                    : {}),
+            },
+            skip: offset,
+            take: limit,
+            select: {
+                enrollment_date: true,
+                courses: {
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        price: true,
+                        thumbnail_url: true,
+                        created_at: true,
+                        users: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                enrollment_date: 'desc',
+            },
+        });
+
+        return enrollments.map((enrollment) => ({
+            id: enrollment.courses.id.toString(),
+            instructorName: enrollment.courses.users.name,
+            title: enrollment.courses.title,
+            description: enrollment.courses.description,
+            price: enrollment.courses.price ? enrollment.courses.price.toString() : null,
+            thumbnailUrl: enrollment.courses.thumbnail_url,
+            createdAt: enrollment.courses.created_at.toISOString(),
+        }));
+    }
+
+    private async assertUserCanAccessCourse(courseId: bigint, userId: bigint): Promise<void> {
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            select: { instructor_id: true },
+        });
+
+        if (!course) {
+            throw new NotFoundException(`Course ${courseId} not found`);
+        }
+
+        if (course.instructor_id === userId) {
+            return;
+        }
+
+        const enrollment = await this.prisma.enrollments.findUnique({
+            where: {
+                student_id_course_id: {
+                    student_id: userId,
+                    course_id: courseId,
+                },
+            },
+            select: { id: true },
+        });
+
+        if (!enrollment) {
+            throw new ForbiddenException('You are not enrolled in this course');
+        }
+    }
+
+    async getCourseContentForUser(courseId: bigint, userId: bigint) {
+        await this.assertUserCanAccessCourse(courseId, userId);
 
         return await this.prisma.contents.findMany({
             where: { course_id: courseId },

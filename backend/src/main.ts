@@ -3,16 +3,17 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import * as cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SerializationInterceptor } from './common/interceptors/bigint.interceptor';
 
 dotenv.config();
 dotenv.config({ path: '.env.local', override: true });
 
 async function bootstrap() {
-(BigInt.prototype as any).toJSON = function () {
-  return this.toString();
-};
-  const app = await NestFactory.create(AppModule);
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
     origin: process.env.FRONTEND_URL,

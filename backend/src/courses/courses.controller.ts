@@ -8,8 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 
 import { CoursesService } from './courses.service';
 import { ReorderContentDto, CreateContentDto } from './courses.dto';
@@ -36,9 +38,7 @@ function parsePagination(
   const pageNum = Number(page);
 
   if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 100) {
-    throw new BadRequestException(
-      'limit must be an integer between 1 and 100',
-    );
+    throw new BadRequestException('limit must be an integer between 1 and 100');
   }
 
   if (!Number.isInteger(pageNum) || pageNum < 1) {
@@ -51,12 +51,21 @@ function parsePagination(
   };
 }
 
+function parseAuthenticatedUserId(req: Request): bigint {
+  const userId = (req as any)?.user?.sub;
+
+  if (!userId) {
+    throw new BadRequestException('Authenticated user is missing');
+  }
+
+  return parseId(String(userId), 'User ID');
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
-  // from development branch
   @Get()
   async findAll(
     @Query('limit') limit = 6,
@@ -67,10 +76,32 @@ export class CoursesController {
     return this.coursesService.findAllForEnrollment(offset, limitNum, search);
   }
 
+  @Get('/me/enrolled')
+  async findMyEnrolledCourses(
+    @Req() req: Request,
+    @Query('limit') limit = 6,
+    @Query('page') page = 1,
+    @Query('search') search?: string,
+  ): Promise<CourseListItemDto[]> {
+    const { offset, limitNum } = parsePagination(limit, page);
+    const userId = parseAuthenticatedUserId(req);
+
+    return this.coursesService.findMyEnrolledCourses(
+      userId,
+      offset,
+      limitNum,
+      search,
+    );
+  }
+
   @Get('/:id/content')
-  async getCourseContent(@Param('id') id: string) {
+  async getCourseContent(@Param('id') id: string, @Req() req: Request) {
     const courseId = parseId(id, 'Course ID');
-    const data = await this.coursesService.getCourseContent(courseId);
+    const userId = parseAuthenticatedUserId(req);
+    const data = await this.coursesService.getCourseContentForUser(
+      courseId,
+      userId,
+    );
 
     return { success: true, data };
   }
@@ -191,10 +222,7 @@ export class CoursesController {
   }
 
   @Post('/:id/items/:itemId/open')
-  async openResource(
-    @Param('id') id: string,
-    @Param('itemId') itemId: string,
-  ) {
+  async openResource(@Param('id') id: string, @Param('itemId') itemId: string) {
     parseId(id, 'Course ID');
     parseId(itemId, 'Item ID');
   }
