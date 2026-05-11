@@ -5,6 +5,7 @@ import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import * as cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SerializationInterceptor } from './common/interceptors/bigint.interceptor';
 
 dotenv.config();
@@ -21,7 +22,7 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   });
 

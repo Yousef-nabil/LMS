@@ -9,8 +9,10 @@ export function AuthWrapper() {
   const isInitialized = useAppSelector((state) => state.auth.isInitialized);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (!isInitialized) {
+      checkAuth();
+    }
+  }, [checkAuth, isInitialized]);
 
   if (!isInitialized) {
     return <Loading size="medium" />;

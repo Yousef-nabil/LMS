@@ -2,15 +2,40 @@ import apiClient from "../client";
 import type {
   Course,
   CreateCourseRequest,
-  UpdateCourseRequest
-} from "../../types/course";
+  UpdateCourseRequest,
+  CourseContent,
+} from "../../types";
+
+type RawCourseContent = {
+  id: string;
+  course_id: string;
+  title: string;
+  type: "video" | "document";
+  file_url?: string | null;
+  file_size?: string | null;
+  position?: string | null;
+  thumbnail_url?: string | null;
+};
+
+const normalizeCourseContent = (
+  content: RawCourseContent,
+): CourseContent => ({
+  id: String(content.id),
+  courseId: String(content.course_id),
+  title: content.title,
+  type: content.type,
+  fileUrl: content.file_url ?? undefined,
+  fileSize: content.file_size ?? undefined,
+  position: content.position ?? undefined,
+  thumbnailUrl: content.thumbnail_url ?? undefined,
+});
 
 export const courseService = {
   async getInstructorCourses(): Promise<Course[]> {
     const response = await apiClient.get("/courses/instructor/my-courses");
     return response.data.data;
   },
-  
+
   async getCourseById(id: string): Promise<Course> {
     const response = await apiClient.get(`/courses/${id}`);
     return response.data.data;
@@ -21,46 +46,101 @@ export const courseService = {
     return response.data.data;
   },
 
-  async getAllCourses(): Promise<Course[]> {
-    const response = await apiClient.get("/courses");
+  async getCourseContentById(id: string): Promise<CourseContent[]> {
+    const response = await apiClient.get(`/courses/${id}/content`);
+    const payload = response.data?.data ?? [];
+
+    return payload.map((item: RawCourseContent) =>
+      normalizeCourseContent(item),
+    );
+  },
+
+  async getAllCourses(
+    page = 1,
+    limit = 6,
+    search?: string,
+  ): Promise<Course[]> {
+    const response = await apiClient.get("/courses", {
+      params: { page, limit, search },
+    });
+
     return response.data;
   },
 
-  async createCourse(data: CreateCourseRequest, onProgress?: (progress: number) => void): Promise<Course> {
+  async getMyEnrolledCourses(
+    page = 1,
+    limit = 6,
+    search?: string,
+  ): Promise<Course[]> {
+    const response = await apiClient.get("/courses/me/enrolled", {
+      params: { page, limit, search },
+    });
+
+    return response.data;
+  },
+
+  async createCourse(
+    data: CreateCourseRequest,
+    onProgress?: (progress: number) => void,
+  ): Promise<Course> {
     const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key as keyof CreateCourseRequest] !== undefined) {
-        formData.append(key, data[key as keyof CreateCourseRequest] as any);
+
+    Object.keys(data).forEach((key) => {
+      const value = data[key as keyof CreateCourseRequest];
+
+      if (value !== undefined) {
+        formData.append(key, value as any);
       }
     });
 
     const response = await apiClient.post("/courses", formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
-          onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          onProgress(
+            Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            ),
+          );
         }
       },
     });
+
     return response.data.data;
   },
 
-  async updateCourse(id: string, data: UpdateCourseRequest, onProgress?: (progress: number) => void): Promise<Course> {
+  async updateCourse(
+    id: string,
+    data: UpdateCourseRequest,
+    onProgress?: (progress: number) => void,
+  ): Promise<Course> {
     const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key as keyof UpdateCourseRequest] !== undefined) {
-        formData.append(key, data[key as keyof UpdateCourseRequest] as any);
+
+    Object.keys(data).forEach((key) => {
+      const value = data[key as keyof UpdateCourseRequest];
+
+      if (value !== undefined) {
+        formData.append(key, value as any);
       }
     });
 
     const response = await apiClient.put(`/courses/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
-          onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          onProgress(
+            Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            ),
+          );
         }
       },
     });
+
     return response.data.data;
   },
 
@@ -68,38 +148,63 @@ export const courseService = {
     await apiClient.delete(`/courses/${id}`);
   },
 
-  async deleteContent(courseId: string, contentId: string): Promise<void> {
+  async deleteContent(
+    courseId: string,
+    contentId: string,
+  ): Promise<void> {
     await apiClient.delete(`/courses/${courseId}/items/${contentId}`);
   },
 
-  async createContent(courseId: string, data: any, onProgress?: (progress: number) => void) {
+  async createContent(
+    courseId: string,
+    data: any,
+    onProgress?: (progress: number) => void,
+  ) {
     const formData = new FormData();
-    Object.keys(data).forEach(key => {
+
+    Object.keys(data).forEach((key) => {
       if (data[key] !== undefined && data[key] !== null) {
         formData.append(key, data[key]);
       }
     });
 
-    const response = await apiClient.post(`/courses/${courseId}/upload`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await apiClient.post(
+      `/courses/${courseId}/upload`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+
+            onProgress(percentCompleted);
+          }
+        },
       },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          onProgress(percentCompleted);
-        }
-      },
-    });
+    );
+
     return response.data;
   },
 
-  async reorderContent(courseId: string, contentId: string, prevId: string | null, nextId: string | null) {
-    const response = await apiClient.put(`/courses/${courseId}/reorder`, {
-      contentId: Number(contentId),
-      prevId: prevId ? Number(prevId) : null,
-      nextId: nextId ? Number(nextId) : null,
-    });
+  async reorderContent(
+    courseId: string,
+    contentId: string,
+    prevId: string | null,
+    nextId: string | null,
+  ) {
+    const response = await apiClient.put(
+      `/courses/${courseId}/reorder`,
+      {
+        contentId: Number(contentId),
+        prevId: prevId ? Number(prevId) : null,
+        nextId: nextId ? Number(nextId) : null,
+      },
+    );
+
     return response.data;
-  }
+  },
 };

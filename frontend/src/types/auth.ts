@@ -8,7 +8,14 @@ export interface LoginErrors {
   password?: string;
 }
 
-export type Role = "student" | "instructor";
+export type Role = 'student' | 'instructor';
+
+export interface AuthUser {
+  name: string;
+  email: string;
+  role: Role | string;
+  profilePictureUrl?: string | null;
+}
 
 export interface SignupRequest {
   name: string;
@@ -23,4 +30,20 @@ export interface SignupErrors {
   password?: string;
   confirmPassword?: string;
   role?: string;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  profilePictureFile?: File | null;
+  oldPassword?: string;
+  newPassword?: string;
+  confirmNewPassword?: string;
+}
+
+export interface UpdateProfileErrors {
+  name?: string;
+  profilePictureFile?: string;
+  oldPassword?: string;
+  newPassword?: string;
+  confirmNewPassword?: string;
 }

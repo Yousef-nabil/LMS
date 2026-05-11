@@ -14,14 +14,20 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
-import express from 'express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import type { Request } from 'express';
 
 import { CoursesService } from './courses.service';
 import { SupabaseService } from '../common/services/supabase.service';
-import { ReorderContentDto, CreateContentDto, CreateCourseDto, UpdateCourseDto } from './courses.dto';
+import {
+  ReorderContentDto,
+  CreateContentDto,
+  CreateCourseDto,
+  UpdateCourseDto,
+} from './courses.dto';
 import { CourseListItemDto } from './dto/course-list-item.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 
@@ -30,7 +36,9 @@ function parseId(raw: string, label = 'ID'): bigint {
   const n = Number(raw);
 
   if (!Number.isInteger(n) || n <= 0) {
-    throw new BadRequestException(`${label} must be a positive integer`);
+    throw new BadRequestException(
+      `${label} must be a positive integer`,
+    );
   }
 
   return BigInt(raw);
@@ -44,20 +52,38 @@ function parsePagination(
   const limitNum = Number(limit);
   const pageNum = Number(page);
 
-  if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 100) {
+  if (
+    !Number.isInteger(limitNum) ||
+    limitNum < 1 ||
+    limitNum > 100
+  ) {
     throw new BadRequestException(
       'limit must be an integer between 1 and 100',
     );
   }
 
   if (!Number.isInteger(pageNum) || pageNum < 1) {
-    throw new BadRequestException('page must be a positive integer');
+    throw new BadRequestException(
+      'page must be a positive integer',
+    );
   }
 
   return {
     offset: (pageNum - 1) * limitNum,
     limitNum,
   };
+}
+
+function parseAuthenticatedUserId(req: Request): bigint {
+  const userId = (req as any)?.user?.sub;
+
+  if (!userId) {
+    throw new BadRequestException(
+      'Authenticated user is missing',
+    );
+  }
+
+  return parseId(String(userId), 'User ID');
 }
 
 @UseGuards(JwtAuthGuard)
@@ -68,10 +94,37 @@ export class CoursesController {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  // from development branch
   @Get()
-  async findAll(): Promise<CourseListItemDto[]> {
-    return this.coursesService.findAllForEnrollment();
+  async findAll(
+    @Query('limit') limit = 6,
+    @Query('page') page = 1,
+    @Query('search') search?: string,
+  ): Promise<CourseListItemDto[]> {
+    const { offset, limitNum } = parsePagination(limit, page);
+
+    return this.coursesService.findAllForEnrollment(
+      offset,
+      limitNum,
+      search,
+    );
+  }
+
+  @Get('/me/enrolled')
+  async findMyEnrolledCourses(
+    @Req() req: Request,
+    @Query('limit') limit = 6,
+    @Query('page') page = 1,
+    @Query('search') search?: string,
+  ): Promise<CourseListItemDto[]> {
+    const { offset, limitNum } = parsePagination(limit, page);
+    const userId = parseAuthenticatedUserId(req);
+
+    return this.coursesService.findMyEnrolledCourses(
+      userId,
+      offset,
+      limitNum,
+      search,
+    );
   }
 
   @Get('/:id')
@@ -86,11 +139,23 @@ export class CoursesController {
   }
 
   @Get('/:id/content')
-  async getCourseContent(@Param('id') id: string) {
+  async getCourseContent(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
     const courseId = parseId(id, 'Course ID');
-    const data = await this.coursesService.getCourseContent(courseId);
+    const userId = parseAuthenticatedUserId(req);
 
-    return { success: true, data };
+    const data =
+      await this.coursesService.getCourseContentForUser(
+        courseId,
+        userId,
+      );
+
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Get('/:id/students')
@@ -102,13 +167,17 @@ export class CoursesController {
     const courseId = parseId(id, 'Course ID');
     const { offset, limitNum } = parsePagination(limit, page);
 
-    const data = await this.coursesService.getCourseEnrollments(
-      courseId,
-      offset,
-      limitNum,
-    );
+    const data =
+      await this.coursesService.getCourseEnrollments(
+        courseId,
+        offset,
+        limitNum,
+      );
 
-    return { success: true, data };
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Get('/:id/announcements')
@@ -120,13 +189,17 @@ export class CoursesController {
     const courseId = parseId(id, 'Course ID');
     const { offset, limitNum } = parsePagination(limit, page);
 
-    const data = await this.coursesService.getCoursesAnnouncements(
-      courseId,
-      offset,
-      limitNum,
-    );
+    const data =
+      await this.coursesService.getCoursesAnnouncements(
+        courseId,
+        offset,
+        limitNum,
+      );
 
-    return { success: true, data };
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Get('/:id/assignments')
@@ -138,13 +211,17 @@ export class CoursesController {
     const courseId = parseId(id, 'Course ID');
     const { offset, limitNum } = parsePagination(limit, page);
 
-    const data = await this.coursesService.getCourseAssignments(
-      courseId,
-      offset,
-      limitNum,
-    );
+    const data =
+      await this.coursesService.getCourseAssignments(
+        courseId,
+        offset,
+        limitNum,
+      );
 
-    return { success: true, data };
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Get('/:id/stats')
@@ -158,9 +235,13 @@ export class CoursesController {
   }
 
   @Get('/instructor/my-courses')
-  async getInstructorCourses(@Req() req: express.Request) {
-    const instructorId = BigInt((req.user as any).sub);
-    const data = await this.coursesService.findByInstructorId(instructorId);
+  async getInstructorCourses(@Req() req: Request) {
+    const instructorId = parseAuthenticatedUserId(req);
+
+    const data =
+      await this.coursesService.findByInstructorId(
+        instructorId,
+      );
 
     return {
       success: true,
@@ -171,23 +252,29 @@ export class CoursesController {
   @Post('/')
   @UseInterceptors(FileInterceptor('thumbnail'))
   async createCourse(
-    @Req() req: express.Request,
+    @Req() req: Request,
     @Body() body: CreateCourseDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const instructorId = BigInt((req.user as any).sub);
+    const instructorId = parseAuthenticatedUserId(req);
+
     const safeBody = body || {};
     let thumbnailUrl = safeBody.thumbnailUrl;
 
     if (file) {
-      const result = await this.supabaseService.uploadFile(file);
+      const result =
+        await this.supabaseService.uploadFile(file);
+
       thumbnailUrl = result.url;
     }
 
-    const data = await this.coursesService.createCourse(instructorId, {
-      ...safeBody,
-      thumbnailUrl,
-    });
+    const data = await this.coursesService.createCourse(
+      instructorId,
+      {
+        ...safeBody,
+        thumbnailUrl,
+      },
+    );
 
     return {
       success: true,
@@ -199,17 +286,20 @@ export class CoursesController {
   @UseInterceptors(FileInterceptor('thumbnail'))
   async updateCourse(
     @Param('id') id: string,
-    @Req() req: express.Request,
+    @Req() req: Request,
     @Body() body: UpdateCourseDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const courseId = parseId(id, 'Course ID');
-    const instructorId = BigInt((req.user as any).sub);
+    const instructorId = parseAuthenticatedUserId(req);
+
     const safeBody = body || {};
     let thumbnailUrl = safeBody.thumbnailUrl;
 
     if (file) {
-      const result = await this.supabaseService.uploadFile(file);
+      const result =
+        await this.supabaseService.uploadFile(file);
+
       thumbnailUrl = result.url;
     }
 
@@ -229,20 +319,30 @@ export class CoursesController {
   }
 
   @Post('/:id/upload')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'file', maxCount: 1 },
-    { name: 'thumbnail', maxCount: 1 },
-  ], {
-    limits: {
-      fileSize: 1024 * 1024 * 1024, // 1 GB
-    }
-  }))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'thumbnail', maxCount: 1 },
+      ],
+      {
+        limits: {
+          fileSize: 1024 * 1024 * 1024, // 1 GB
+        },
+      },
+    ),
+  )
   async uploadCourseContent(
     @Param('id') id: string,
     @Body() body: CreateContentDto,
-    @UploadedFiles() files: { file?: Express.Multer.File[], thumbnail?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: {
+      file?: Express.Multer.File[];
+      thumbnail?: Express.Multer.File[];
+    },
   ) {
     const courseId = parseId(id, 'Course ID');
+
     let fileUrl: string | undefined = undefined;
     let fileSize: number | undefined = undefined;
     let thumbnailUrl: string | undefined = undefined;
@@ -251,22 +351,33 @@ export class CoursesController {
     const thumbFile = files.thumbnail?.[0];
 
     if (mainFile) {
-      const result = await this.supabaseService.uploadFile(mainFile);
+      const result =
+        await this.supabaseService.uploadFile(
+          mainFile,
+        );
+
       fileUrl = result.url;
       fileSize = result.size;
     }
 
     if (thumbFile) {
-      const result = await this.supabaseService.uploadFile(thumbFile);
+      const result =
+        await this.supabaseService.uploadFile(
+          thumbFile,
+        );
+
       thumbnailUrl = result.url;
     }
 
-    return this.coursesService.createContent(courseId, {
-      ...body,
-      fileUrl,
-      fileSize,
-      thumbnailUrl,
-    });
+    return this.coursesService.createContent(
+      courseId,
+      {
+        ...body,
+        fileUrl,
+        fileSize,
+        thumbnailUrl,
+      },
+    );
   }
 
   @Put('/:id/reorder')
@@ -277,13 +388,19 @@ export class CoursesController {
     return this.coursesService.reorderContent(
       parseId(courseId, 'Course ID'),
       BigInt(body.contentId),
-      body.prevId != null ? BigInt(body.prevId) : null,
-      body.nextId != null ? BigInt(body.nextId) : null,
+      body.prevId != null
+        ? BigInt(body.prevId)
+        : null,
+      body.nextId != null
+        ? BigInt(body.nextId)
+        : null,
     );
   }
 
   @Post('/:id/announcements')
-  async createAnnouncement(@Param('id') id: string) {
+  async createAnnouncement(
+    @Param('id') id: string,
+  ) {
     parseId(id, 'Course ID');
   }
 
@@ -291,13 +408,17 @@ export class CoursesController {
   async deleteCourseItem(
     @Param('id') id: string,
     @Param('itemId') itemId: string,
-    @Req() req: express.Request,
+    @Req() req: Request,
   ) {
     const courseId = parseId(id, 'Course ID');
     const contentId = parseId(itemId, 'Item ID');
-    const instructorId = BigInt((req.user as any).sub);
+    const instructorId = parseAuthenticatedUserId(req);
 
-    await this.coursesService.deleteContent(courseId, instructorId, contentId);
+    await this.coursesService.deleteContent(
+      courseId,
+      instructorId,
+      contentId,
+    );
 
     return {
       success: true,
@@ -306,11 +427,17 @@ export class CoursesController {
   }
 
   @Delete('/:id')
-  async deleteCourse(@Param('id') id: string, @Req() req: express.Request) {
+  async deleteCourse(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
     const courseId = parseId(id, 'Course ID');
-    const instructorId = BigInt((req.user as any).sub);
+    const instructorId = parseAuthenticatedUserId(req);
 
-    await this.coursesService.deleteCourse(courseId, instructorId);
+    await this.coursesService.deleteCourse(
+      courseId,
+      instructorId,
+    );
 
     return {
       success: true,

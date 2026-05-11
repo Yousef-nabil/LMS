@@ -48,6 +48,7 @@ model courses {
   description   String?
   thumbnail_url String?
   price         Decimal?        @db.Decimal(10, 2)
+  thumbnail_url String?
   created_at    DateTime        @default(now()) @db.Timestamp(6)
   announcements announcements[]
   assignments   assignments[]
@@ -111,6 +112,7 @@ model users {
   email          String           @unique @db.VarChar(255)
   password_hash  String           @db.VarChar(255)
   role           user_role
+  profile_picture_url String?
   google_sub     String?
   announcements  announcements[]
   courses        courses[]

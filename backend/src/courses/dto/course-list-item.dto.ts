@@ -5,6 +5,7 @@ export class CourseListItemDto {
   description: string | null;
   thumbnailUrl: string | null;
   price: string | null;
+  thumbnailUrl: string | null;
   createdAt: string;
   enrollmentsCount?: number;
 }
