@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
@@ -10,6 +9,8 @@ import { SerializationInterceptor } from './common/interceptors/bigint.intercept
 
 dotenv.config();
 dotenv.config({ path: '.env.local', override: true });
+dotenv.config({ path: '.env', override: true });
+
 
 async function bootstrap() {
 (BigInt.prototype as any).toJSON = function () {

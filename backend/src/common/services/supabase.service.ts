@@ -5,11 +5,19 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 export class SupabaseService {
   private client: SupabaseClient;
 
-  constructor() {
-    const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
-    const supabaseKey = (process.env.SUPABASE_KEY || '').trim();
-    this.client = createClient(supabaseUrl, supabaseKey);
+constructor() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error('SUPABASE_URL is missing');
   }
+
+  if (!supabaseKey) {
+    throw new Error('SUPABASE_KEY is missing');
+  }
+  this.client = createClient(supabaseUrl, supabaseKey);
+}
 
   async uploadFile(file: Express.Multer.File, bucket?: string) {
     const bucketName = (bucket || process.env.SUPABASE_BUCKET || 'lms-content').trim();

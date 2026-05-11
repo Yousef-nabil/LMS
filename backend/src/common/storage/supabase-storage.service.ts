@@ -2,28 +2,30 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
-
 @Injectable()
 export class SupabaseStorageService {
-  private readonly client = createClient(
-    process.env.SUPABASE_URL ?? '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-  );
-
+  private client;
   private readonly bucket =
     process.env.SUPABASE_STORAGE_BUCKET ?? 'profile-pictures';
+
+  constructor() {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+      throw new InternalServerErrorException(
+        'Supabase storage is not configured',
+      );
+    }
+
+    this.client = createClient(url, key);
+  }
 
   async uploadProfilePicture(file: {
     buffer: Buffer;
     mimetype: string;
     originalname: string;
   }) {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new InternalServerErrorException(
-        'Supabase storage is not configured',
-      );
-    }
-
     const fileName = `${randomUUID()}${extname(file.originalname).toLowerCase()}`;
     const path = `profile-pictures/${fileName}`;
 
