@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import * as cookieParser from 'cookie-parser';
@@ -10,10 +12,14 @@ dotenv.config();
 dotenv.config({ path: '.env.local', override: true });
 
 async function bootstrap() {
-  (BigInt.prototype as any).toJSON = function () {
-    return this.toString();
-  };
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   app.enableCors({
     origin: process.env.FRONTEND_URL,

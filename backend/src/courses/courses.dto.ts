@@ -9,12 +9,9 @@ import {
     MaxLength,
     IsNumber,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+import { content_type } from '@prisma/client';
 
-enum ContentType {
-    video = 'video',
-    document = 'document',
-}
 
 export class CreateContentDto {
     @IsNotEmpty({ message: 'title is required' })
@@ -23,22 +20,25 @@ export class CreateContentDto {
     title: string;
 
     @IsNotEmpty({ message: 'type is required' })
-    @IsEnum(ContentType, { message: 'type must be either video or document' })
-    type: ContentType;
+    @IsEnum(content_type, { message: 'type must be a valid content type' })
+    type: content_type;
 
     @IsOptional()
-    @IsUrl({}, { message: 'file_url must be a valid URL' })
+    @Transform(({ value }) => (value === 'null' || value === 'undefined' || value === '' ? undefined : value))
+    @IsUrl({}, { message: 'fileUrl must be a valid URL' })
     @MaxLength(500)
-    file_url?: string;
+    fileUrl?: string;
 
     @IsOptional()
+    @Type(() => Number)
     @IsNumber()
     @IsPositive()
-    file_size?: number;
+    fileSize?: number;
 
     @IsOptional()
-    @IsUrl({}, { message: 'thumbnail_url must be a valid URL' })
-    thumbnail_url?: string;
+    @Transform(({ value }) => (value === 'null' || value === 'undefined' || value === '' ? undefined : value))
+    @IsUrl({}, { message: 'thumbnailUrl must be a valid URL' })
+    thumbnailUrl?: string;
 }
 
 export class ReorderContentDto {
@@ -59,4 +59,48 @@ export class ReorderContentDto {
     @IsInt({ message: 'nextId must be an integer' })
     @IsPositive({ message: 'nextId must be a positive number' })
     nextId?: number;
+}
+
+export class CreateCourseDto {
+    @IsNotEmpty({ message: 'title is required' })
+    @IsString()
+    @MaxLength(255)
+    title: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @Transform(({ value }) => (value === 'null' || value === 'undefined' || value === '' ? undefined : value))
+    @IsUrl({}, { message: 'thumbnailUrl must be a valid URL' })
+    thumbnailUrl?: string;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @IsPositive()
+    price?: number;
+}
+
+export class UpdateCourseDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(255)
+    title?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @Transform(({ value }) => (value === 'null' || value === 'undefined' || value === '' ? undefined : value))
+    @IsUrl({}, { message: 'thumbnailUrl must be a valid URL' })
+    thumbnailUrl?: string;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @IsPositive()
+    price?: number;
 }

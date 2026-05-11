@@ -3,7 +3,9 @@ export class CourseListItemDto {
   instructorName: string;
   title: string;
   description: string | null;
+  thumbnailUrl: string | null;
   price: string | null;
   thumbnailUrl: string | null;
   createdAt: string;
+  enrollmentsCount?: number;
 }

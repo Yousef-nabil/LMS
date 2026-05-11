@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CoursesRepo } from './courses.repo';
-import { CreateContentDto } from './courses.dto';
+import { CreateContentDto, CreateCourseDto, UpdateCourseDto } from './courses.dto';
 
 @Injectable()
 export class CoursesService {
@@ -64,5 +64,36 @@ export class CoursesService {
       limit,
       search,
     );
+  }
+
+  async findById(courseId: bigint) {
+    return await this.coursesRepo.findById(courseId);
+  }
+
+  async findByInstructorId(instructorId: bigint) {
+    return await this.coursesRepo.findByInstructorId(instructorId);
+  }
+
+  async createCourse(instructorId: bigint, data: CreateCourseDto) {
+    return await this.coursesRepo.createCourse(instructorId, data);
+  }
+
+  async updateCourse(courseId: bigint, instructorId: bigint, data: UpdateCourseDto) {
+    return await this.coursesRepo.updateCourse(courseId, instructorId, data);
+  }
+
+  async deleteCourse(courseId: bigint, instructorId: bigint) {
+    return await this.coursesRepo.deleteCourse(courseId, instructorId);
+  }
+
+  async deleteContent(courseId: bigint, instructorId: bigint, contentId: bigint) {
+    const course = await this.coursesRepo.findById(courseId);
+    
+    const courseRaw = await this.coursesRepo.findByInstructorId(instructorId);
+    if (!courseRaw.find(c => c.id === courseId.toString())) {
+       throw new BadRequestException('You are not authorized to delete content from this course');
+    }
+
+    return await this.coursesRepo.deleteContent(courseId, contentId);
   }
 }
