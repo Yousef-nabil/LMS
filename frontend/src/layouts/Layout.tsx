@@ -2,7 +2,6 @@ import { Outlet, Link, useLocation } from 'react-router';
 import {
   BookOpen,
   Home,
-  TrendingUp,
   PlusCircle,
   BarChart3,
   LogOut,
@@ -23,15 +22,12 @@ export function Layout() {
   const studentNav = [
     { path: '/student/dashboard', label: 'My Courses', icon: Home },
     { path: '/student/browse', label: 'Browse Courses', icon: BookOpen },
-    { path: '/student/grades', label: 'Grades', icon: TrendingUp },
   ];
 
   const instructorNav = [
-    { path: "/instructor/my-courses", label: "My Courses", icon: Home },
-    { path: "/instructor/create", label: "Create Course", icon: PlusCircle },
-    { path: "/instructor/analytics", label: "Analytics", icon: BarChart3 },
-    { path: '/instructor/dashboard', label: 'My Courses', icon: Home },
-        
+    { path: '/instructor/my-courses', label: 'My Courses', icon: Home },
+    { path: '/instructor/create', label: 'Create Course', icon: PlusCircle },
+    // { path: '/instructor/analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
   const navItems = [

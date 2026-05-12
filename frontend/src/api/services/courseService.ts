@@ -148,6 +148,17 @@ export const courseService = {
     await apiClient.delete(`/courses/${id}`);
   },
 
+  async enrollInCourse(courseId: string) {
+    const response = await apiClient.post(`/courses/${courseId}/enroll`);
+    return response.data.data as {
+      courseId: string;
+      enrolled: boolean;
+      alreadyEnrolled: boolean;
+      enrolledAt: string;
+      message: string;
+    };
+  },
+
   async deleteContent(
     courseId: string,
     contentId: string,

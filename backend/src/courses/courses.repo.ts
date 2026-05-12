@@ -286,6 +286,89 @@ export class CoursesRepo {
     });
   }
 
+  async enrollStudent(
+    courseId: bigint,
+    studentId: bigint,
+  ) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: studentId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        `User ${studentId} not found`,
+      );
+    }
+
+    if (user.role !== 'student') {
+      throw new ForbiddenException(
+        'Only students can enroll in courses',
+      );
+    }
+
+    const course = await this.prisma.courses.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        instructor_id: true,
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException(
+        `Course ${courseId} not found`,
+      );
+    }
+
+    if (course.instructor_id === studentId) {
+      throw new BadRequestException(
+        'You cannot enroll in your own course',
+      );
+    }
+
+    const existingEnrollment =
+      await this.prisma.enrollments.findUnique({
+        where: {
+          student_id_course_id: {
+            student_id: studentId,
+            course_id: courseId,
+          },
+        },
+        select: {
+          enrollment_date: true,
+        },
+      });
+
+    if (existingEnrollment) {
+      return {
+        courseId: course.id.toString(),
+        enrolled: true,
+        alreadyEnrolled: true,
+        enrolledAt: existingEnrollment.enrollment_date.toISOString(),
+        message: 'You are already enrolled in this course',
+      };
+    }
+
+    const enrollment = await this.prisma.enrollments.create({
+      data: {
+        course_id: courseId,
+        student_id: studentId,
+      },
+      select: {
+        enrollment_date: true,
+      },
+    });
+
+    return {
+      courseId: course.id.toString(),
+      enrolled: true,
+      alreadyEnrolled: false,
+      enrolledAt: enrollment.enrollment_date.toISOString(),
+      message: 'You have successfully enrolled in this course',
+    };
+  }
+
   async findMyEnrolledCourses(
     userId: bigint,
     offset: number,

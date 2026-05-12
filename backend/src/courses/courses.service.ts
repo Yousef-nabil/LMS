@@ -86,6 +86,10 @@ export class CoursesService {
     return await this.coursesRepo.deleteCourse(courseId, instructorId);
   }
 
+  async enrollStudent(courseId: bigint, studentId: bigint) {
+    return await this.coursesRepo.enrollStudent(courseId, studentId);
+  }
+
   async deleteContent(courseId: bigint, instructorId: bigint, contentId: bigint) {
     const course = await this.coursesRepo.findById(courseId);
     

@@ -1,25 +1,26 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { File as MulterFile } from 'multer';
 
 @Injectable()
 export class SupabaseService {
   private client: SupabaseClient;
 
-constructor() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY;
+  constructor() {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY;
 
-  if (!supabaseUrl) {
-    throw new Error('SUPABASE_URL is missing');
+    if (!supabaseUrl || !supabaseKey) {
+      throw new InternalServerErrorException(
+        'Supabase storage is not configured',
+      );
+    }
+
+    this.client = createClient(supabaseUrl, supabaseKey);
   }
 
-  if (!supabaseKey) {
-    throw new Error('SUPABASE_KEY is missing');
-  }
-  this.client = createClient(supabaseUrl, supabaseKey);
-}
-
-  async uploadFile(file: Express.Multer.File, bucket?: string) {
+  async uploadFile(file: MulterFile, bucket?: string) {
     const bucketName = (bucket || process.env.SUPABASE_BUCKET || 'lms-content').trim();
     const sanitizedName = file.originalname
       .replace(/\s+/g, '_')           // Replace spaces with underscores

@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
-import { Link } from "react-router";
-import { Search, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Loader2, Search, CheckCircle2, X } from "lucide-react";
 import { courseService } from "../../api/services/courseService";
 import { useDebounce } from "../../hooks/useDebounce";
 import type { Course } from "../../types";
 
 export function BrowseCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successCourseTitle, setSuccessCourseTitle] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const coursesPerPage = 6;
 
   // Reset to page 1 when search term changes
@@ -24,8 +30,19 @@ export function BrowseCourses() {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        const data = await courseService.getAllCourses(currentPage, coursesPerPage, debouncedSearchTerm);
-        setCourses(data);
+        const [allCourses, enrolledCourses] = await Promise.all([
+          courseService.getAllCourses(
+            currentPage,
+            coursesPerPage,
+            debouncedSearchTerm,
+          ),
+          courseService.getMyEnrolledCourses(1, 100),
+        ]);
+
+        setCourses(allCourses);
+        setEnrolledCourseIds(
+          new Set(enrolledCourses.map((course) => course.id)),
+        );
       } catch (err) {
         setError("Failed to load courses. Please try again later.");
         console.error(err);
@@ -36,6 +53,25 @@ export function BrowseCourses() {
 
     fetchCourses();
   }, [currentPage, debouncedSearchTerm]);
+
+  const handleEnroll = async (course: Course) => {
+    try {
+      setEnrollingCourseId(course.id);
+      setErrorMessage(null);
+
+      const result = await courseService.enrollInCourse(course.id);
+      setEnrolledCourseIds((current) => new Set(current).add(course.id));
+      setSuccessCourseTitle(course.title);
+      setSuccessMessage(result.message);
+    } catch (err: any) {
+      setErrorMessage(
+        err?.response?.data?.message ||
+          "Failed to enroll in course. Please try again.",
+      );
+    } finally {
+      setEnrollingCourseId(null);
+    }
+  };
 
   // filteredCourses is no longer needed locally as the server handles filtering
   const displayCourses = courses;
@@ -123,15 +159,31 @@ export function BrowseCourses() {
                     by <span className="font-medium text-foreground">{course.instructorName}</span>
                   </div>
 
-                  <Link to={`/checkout/${course.id}`}>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all cursor-pointer"
-                    >
-                      Enroll Now
-                    </motion.button>
-                  </Link>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleEnroll(course)}
+                    disabled={
+                      enrollingCourseId === course.id ||
+                      enrolledCourseIds.has(course.id)
+                    }
+                    className={`w-full py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                      enrolledCourseIds.has(course.id)
+                        ? "bg-secondary text-secondary-foreground shadow-none cursor-not-allowed"
+                        : "bg-primary text-primary-foreground shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                    }`}
+                  >
+                    {enrolledCourseIds.has(course.id) ? (
+                      "Enrolled"
+                    ) : enrollingCourseId === course.id ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Enrolling...
+                      </>
+                    ) : (
+                      "Enroll Now"
+                    )}
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -139,8 +191,18 @@ export function BrowseCourses() {
         </div>
       )}
 
+      {!loading && displayCourses.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20"
+        >
+          <p className="text-muted-foreground text-lg">No courses found matching your criteria</p>
+        </motion.div>
+      )}
+
       {/* Pagination Controls */}
-      {!loading && displayCourses.length > 0 && (
+      {!loading && (
         <div className="flex items-center justify-center space-x-4 mt-12">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -160,15 +222,127 @@ export function BrowseCourses() {
         </div>
       )}
 
-      {!loading && displayCourses.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-20"
-        >
-          <p className="text-muted-foreground text-lg">No courses found matching your criteria</p>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setSuccessMessage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="size-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                      <CheckCircle2 className="size-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                        Enrollment confirmed
+                      </p>
+                      <h3 className="text-2xl font-bold text-foreground">
+                        You’re in
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSuccessMessage(null)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary transition-colors"
+                    aria-label="Close success dialog"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {successMessage}
+                  </p>
+                  {successCourseTitle && (
+                    <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
+                      <p className="text-sm font-medium text-foreground">
+                        {successCourseTitle}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        It has been added to your enrolled courses.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setSuccessMessage(null)}
+                  className="w-full rounded-2xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
+                >
+                  Continue browsing
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setErrorMessage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="size-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
+                      <X className="size-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                        Enrollment issue
+                      </p>
+                      <h3 className="text-2xl font-bold text-foreground">
+                        Couldn’t enroll
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setErrorMessage(null)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-secondary transition-colors"
+                    aria-label="Close error dialog"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <p className="text-sm text-muted-foreground">{errorMessage}</p>
+
+                <button
+                  onClick={() => setErrorMessage(null)}
+                  className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold text-secondary-foreground transition-all hover:bg-secondary/80"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

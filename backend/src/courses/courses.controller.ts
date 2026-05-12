@@ -30,6 +30,7 @@ import {
 } from './courses.dto';
 import { CourseListItemDto } from './dto/course-list-item.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import type { File as MulterFile } from 'multer';
 
 // parse and validate a single ID param, throwing 400 if invalid
 function parseId(raw: string, label = 'ID'): bigint {
@@ -234,6 +235,25 @@ export class CoursesController {
     };
   }
 
+  @Post('/:id/enroll')
+  async enrollInCourse(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    const courseId = parseId(id, 'Course ID');
+    const studentId = parseAuthenticatedUserId(req);
+
+    const data = await this.coursesService.enrollStudent(
+      courseId,
+      studentId,
+    );
+
+    return {
+      success: true,
+      data,
+    };
+  }
+
   @Get('/instructor/my-courses')
   async getInstructorCourses(@Req() req: Request) {
     const instructorId = parseAuthenticatedUserId(req);
@@ -254,7 +274,7 @@ export class CoursesController {
   async createCourse(
     @Req() req: Request,
     @Body() body: CreateCourseDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: MulterFile,
   ) {
     const instructorId = parseAuthenticatedUserId(req);
 
@@ -288,7 +308,7 @@ export class CoursesController {
     @Param('id') id: string,
     @Req() req: Request,
     @Body() body: UpdateCourseDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: MulterFile,
   ) {
     const courseId = parseId(id, 'Course ID');
     const instructorId = parseAuthenticatedUserId(req);
@@ -337,8 +357,8 @@ export class CoursesController {
     @Body() body: CreateContentDto,
     @UploadedFiles()
     files: {
-      file?: Express.Multer.File[];
-      thumbnail?: Express.Multer.File[];
+      file?: MulterFile[];
+      thumbnail?: MulterFile[];
     },
   ) {
     const courseId = parseId(id, 'Course ID');
