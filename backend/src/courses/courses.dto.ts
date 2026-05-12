@@ -8,6 +8,7 @@ import {
     IsUrl,
     MaxLength,
     IsNumber,
+    IsBoolean,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { content_type } from '@prisma/client';
@@ -81,6 +82,10 @@ export class CreateCourseDto {
     @IsNumber()
     @IsPositive()
     price?: number;
+
+    @IsOptional()
+    @IsBoolean()
+    isPublished?: boolean;
 }
 
 export class UpdateCourseDto {
@@ -103,4 +108,8 @@ export class UpdateCourseDto {
     @IsNumber()
     @IsPositive()
     price?: number;
+
+    @IsOptional()
+    @IsBoolean()
+    isPublished?: boolean;
 }

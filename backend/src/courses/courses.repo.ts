@@ -49,6 +49,7 @@ export class CoursesRepo {
       createdAt: course.created_at.toISOString(),
       enrollmentsCount:
         course._count?.enrollments,
+      isPublished: course.is_published ?? undefined,
     };
   }
 
@@ -284,6 +285,53 @@ export class CoursesRepo {
     return await this.prisma.courses.delete({
       where: { id: courseId },
     });
+  }
+
+  async togglePublish(
+    courseId: bigint,
+    instructorId: bigint,
+  ): Promise<CourseListItemDto> {
+    const course =
+      await this.prisma.courses.findUnique({
+        where: { id: courseId },
+        include: {
+          _count: {
+            select: { enrollments: true },
+          },
+          users: {
+            select: { name: true },
+          },
+        },
+      });
+
+    if (!course) {
+      throw new NotFoundException(
+        `Course ${courseId} not found`,
+      );
+    }
+
+    if (course.instructor_id !== instructorId) {
+      throw new BadRequestException(
+        'You are not authorized to update this course',
+      );
+    }
+
+    const updated = await this.prisma.courses.update({
+      where: { id: courseId },
+      data: {
+        is_published: !course.is_published,
+      },
+      include: {
+        _count: {
+          select: { enrollments: true },
+        },
+        users: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return this.mapToDto(updated);
   }
 
   async findMyEnrolledCourses(

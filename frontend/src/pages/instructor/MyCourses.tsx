@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
-import { Plus, Trash2, Home, BookOpen, Users, DollarSign } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  BookOpen,
+  Users,
+  DollarSign,
+  CircleCheck,
+  CircleX,
+  Loader2,
+  AlertCircle,
+  LayoutGrid,
+} from "lucide-react";
 import { courseService } from "../../api/services/courseService";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import AlertCard from "../../components/AlertCard";
@@ -12,6 +23,8 @@ export function InstructorMyCourses() {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,14 +44,36 @@ export function InstructorMyCourses() {
   const handleDeleteCourse = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
+    setError(null);
     try {
       await courseService.deleteCourse(deleteId);
-      setCourses(courses.filter(c => c.id !== deleteId));
+      setCourses((prev) => prev.filter((c) => c.id !== deleteId));
       setDeleteId(null);
     } catch (err) {
       setError("Failed to delete course");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleTogglePublish = async (courseId: string) => {
+    setPublishingId(courseId);
+    setIsPublishing(true);
+    setError(null);
+    try {
+      const updated = await courseService.publishCourse(courseId);
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === courseId
+            ? { ...c, isPublished: updated.isPublished }
+            : c
+        )
+      );
+    } catch (err) {
+      setError("Failed to update publish status");
+    } finally {
+      setIsPublishing(false);
+      setPublishingId(null);
     }
   };
 
@@ -59,7 +94,9 @@ export function InstructorMyCourses() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">My Courses</h1>
-          <p className="text-muted-foreground mt-1">Manage and monitor your teaching journey.</p>
+          <p className="text-muted-foreground mt-1">
+            Manage and monitor your teaching journey.
+          </p>
         </div>
         <Link to="/instructor/create">
           <motion.button
@@ -74,10 +111,10 @@ export function InstructorMyCourses() {
       </div>
 
       {error && (
-        <AlertCard 
-          variant="error" 
-          message={error} 
-          onClose={() => setError(null)} 
+        <AlertCard
+          variant="error"
+          message={error}
+          onClose={() => setError(null)}
         />
       )}
 
@@ -88,9 +125,13 @@ export function InstructorMyCourses() {
       >
         {courses.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
-            <div className="text-muted-foreground mb-4">You haven't created any courses yet.</div>
+            <div className="text-muted-foreground mb-4">
+              You haven't created any courses yet.
+            </div>
             <Link to="/instructor/create">
-              <span className="text-primary font-medium hover:underline">Start creating your first course</span>
+              <span className="text-primary font-medium hover:underline">
+                Start creating your first course
+              </span>
             </Link>
           </div>
         ) : (
@@ -102,9 +143,10 @@ export function InstructorMyCourses() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 whileHover={{ y: -4 }}
-                className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col h-full group"
+                className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col"
               >
-                <Link to={`/instructor/manage/${course.id}`} className="flex flex-col sm:flex-row flex-1">
+                {/* Thumbnail area */}
+                <div className="flex flex-col sm:flex-row flex-1">
                   <div className="sm:w-2/5 aspect-video sm:aspect-auto bg-secondary/30 overflow-hidden relative">
                     {course.thumbnailUrl ? (
                       <img
@@ -117,13 +159,31 @@ export function InstructorMyCourses() {
                         No Thumbnail
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded-md text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/20">
-                      Manage
+                    <div className="absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-background/20 backdrop:blur-sm">
+                      <span
+                        className={`flex items-center gap-1 ${
+                          course.isPublished
+                            ? "text-green-400"
+                            : "text-yellow-400"
+                        }`}
+                      >
+                        {course.isPublished ? (
+                          <>
+                            <CircleCheck className="size-3" />
+                            Published
+                          </>
+                        ) : (
+                          <>
+                            <CircleX className="size-3" />
+                            Draft
+                          </>
+                        )}
+                      </span>
                     </div>
                   </div>
                   <div className="sm:w-3/5 p-6 flex flex-col justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-primary transition-colors">
+                      <h3 className="text-lg font-semibold text-foreground mb-3 line-clamp-2 min-h-[3.5rem]">
                         {course.title}
                       </h3>
                       <div className="grid grid-cols-2 gap-4">
@@ -135,7 +195,9 @@ export function InstructorMyCourses() {
                             <div className="text-sm font-bold text-foreground">
                               {(course.enrollmentsCount || 0).toLocaleString()}
                             </div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-medium">Students</div>
+                            <div className="text-[10px] text-muted-foreground uppercase font-medium">
+                              Students
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -143,30 +205,72 @@ export function InstructorMyCourses() {
                             <DollarSign className="size-4" />
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-foreground">${course.price || "0"}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-medium">Price</div>
+                            <div className="text-sm font-bold text-foreground">
+                              ${course.price || "0"}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase font-medium">
+                              Price
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </Link>
-                
-                <div className="px-6 pb-6 pt-2 flex gap-2">
-                  <Link to={`/instructor/edit/${course.id}`} className="flex-1">
+                </div>
+
+                {/* Action Buttons Row */}
+                <div className="px-6 pb-6 pt-3 flex gap-2 border-t border-border/50">
+                  <Link
+                    to={`/instructor/edit/${course.id}`}
+                    className="flex-1"
+                  >
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       className="w-full py-2.5 bg-secondary text-secondary-foreground rounded-xl font-medium hover:bg-secondary/80 transition-all text-sm flex items-center justify-center gap-2"
                     >
+                      <BookOpen className="size-4" />
                       Edit Details
+                    </motion.button>
+                  </Link>
+                  <Link
+                    to={`/instructor/manage/${course.id}`}
+                    className="flex-1"
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full py-2.5 bg-primary/10 text-primary rounded-xl font-medium hover:bg-primary/20 transition-all text-sm flex items-center justify-center gap-2"
+                    >
+                      <LayoutGrid className="size-4" />
+                      Manage Content
                     </motion.button>
                   </Link>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => handleTogglePublish(course.id)}
+                    disabled={isPublishing && publishingId === course.id}
+                    className={`p-2.5 flex-shrink-0 rounded-xl border transition-all ${
+                      course.isPublished
+                        ? "bg-green-500/10 border-green-500/30 text-green-600 hover:bg-green-500/20"
+                        : "bg-yellow-500/10 border-yellow-500/30 text-yellow-600 hover:bg-yellow-500/20"
+                    }`}
+                    title={course.isPublished ? "Unpublish" : "Publish"}
+                  >
+                    {isPublishing && publishingId === course.id ? (
+                      <Loader2 className="size-5 animate-spin" />
+                    ) : course.isPublished ? (
+                      <CircleCheck className="size-5" />
+                    ) : (
+                      <CircleX className="size-5" />
+                    )}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setDeleteId(course.id)}
-                    className="p-2.5 text-muted-foreground hover:text-destructive transition-colors bg-secondary/50 rounded-xl border border-transparent hover:border-destructive/20"
+                    className="p-2.5 text-muted-foreground hover:text-destructive transition-colors bg-secondary/50 rounded-xl border border-transparent hover:border-destructive/20 flex-shrink-0"
                   >
                     <Trash2 className="size-5" />
                   </motion.button>
