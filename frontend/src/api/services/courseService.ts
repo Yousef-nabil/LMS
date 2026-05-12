@@ -4,6 +4,9 @@ import type {
   CreateCourseRequest,
   UpdateCourseRequest,
   CourseContent,
+  Enrollment,
+  EnrollmentCheckResponse,
+  CreateEnrollmentRequest,
 } from "../../types";
 
 type RawCourseContent = {
@@ -148,6 +151,11 @@ export const courseService = {
     await apiClient.delete(`/courses/${id}`);
   },
 
+  async publishCourse(id: string): Promise<Course> {
+    const response = await apiClient.put(`/courses/${id}/publish`);
+    return response.data.data;
+  },
+
   async deleteContent(
     courseId: string,
     contentId: string,
@@ -206,5 +214,23 @@ export const courseService = {
     );
 
     return response.data;
+  },
+
+  async checkEnrollment(courseId: string): Promise<EnrollmentCheckResponse> {
+    const response = await apiClient.get(
+      `/courses/${courseId}/enrollment-status`
+    );
+    return response.data.data;
+  },
+
+  async enrollCourse(
+    data: CreateEnrollmentRequest
+  ): Promise<{ data: Enrollment }> {
+    const response = await apiClient.post("/enrollments", data);
+    return response.data;
+  },
+
+  async unenrollCourse(enrollmentId: string): Promise<void> {
+    await apiClient.delete(`/enrollments/${enrollmentId}`);
   },
 };

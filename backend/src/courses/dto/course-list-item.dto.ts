@@ -7,4 +7,5 @@ export class CourseListItemDto {
   price: string | null;
   createdAt: string;
   enrollmentsCount?: number;
+  isPublished?: boolean;
 }

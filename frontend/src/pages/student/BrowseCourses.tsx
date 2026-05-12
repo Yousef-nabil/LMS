@@ -1,10 +1,42 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Link } from "react-router";
+// import { Link } from "react-router";
+import { useEnrollment } from "../../hooks/useEnrollment";
 import { Search, Loader2 } from "lucide-react";
 import { courseService } from "../../api/services/courseService";
 import { useDebounce } from "../../hooks/useDebounce";
 import type { Course } from "../../types";
+
+function EnrollButton({ courseId }: { courseId: string }) {
+  const { enroll, isLoading, isEnrolled, error } = useEnrollment(courseId);
+  const [success, setSuccess] = useState(false);
+
+  const handleEnroll = async () => {
+    setSuccess(false);
+    try {
+      await enroll(courseId);
+      setSuccess(true);
+    } catch {
+      setSuccess(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all cursor-pointer disabled:opacity-50"
+        onClick={handleEnroll}
+        disabled={isLoading || isEnrolled}
+      >
+        {isEnrolled ? "Enrolled" : isLoading ? "Enrolling..." : "Enroll Now"}
+      </motion.button>
+      {success && <div className="text-green-600 text-sm mt-2">Enrolled successfully!</div>}
+      {error && <div className="text-destructive text-sm mt-2">{error}</div>}
+    </>
+  );
+}
 
 export function BrowseCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -123,15 +155,7 @@ export function BrowseCourses() {
                     by <span className="font-medium text-foreground">{course.instructorName}</span>
                   </div>
 
-                  <Link to={`/checkout/${course.id}`}>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all cursor-pointer"
-                    >
-                      Enroll Now
-                    </motion.button>
-                  </Link>
+                  <EnrollButton courseId={course.id} />
                 </div>
               </div>
             </motion.div>

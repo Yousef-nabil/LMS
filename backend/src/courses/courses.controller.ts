@@ -21,6 +21,7 @@ import {
 import type { Request } from 'express';
 
 import { CoursesService } from './courses.service';
+import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 import { SupabaseService } from '../common/services/supabase.service';
 import {
   ReorderContentDto,
@@ -92,6 +93,7 @@ export class CoursesController {
   constructor(
     private readonly coursesService: CoursesService,
     private readonly supabaseService: SupabaseService,
+    private readonly enrollmentsService: EnrollmentsService,
   ) {}
 
   @Get()
@@ -231,6 +233,26 @@ export class CoursesController {
     return {
       courseId: courseId.toString(),
       message: 'Course stats retrieved successfully',
+    };
+  }
+
+  @Get('/:id/enrollment-status')
+  async getEnrollmentStatus(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    const courseId = parseId(id, 'Course ID');
+    const userId = parseAuthenticatedUserId(req);
+
+    const enrollment =
+      await this.enrollmentsService.findEnrollment(userId, courseId);
+
+    return {
+      success: true,
+      data: {
+        isEnrolled: enrollment !== null,
+        enrollment,
+      },
     };
   }
 
@@ -402,6 +424,25 @@ export class CoursesController {
     @Param('id') id: string,
   ) {
     parseId(id, 'Course ID');
+  }
+
+  @Put('/:id/publish')
+  async togglePublishCourse(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    const courseId = parseId(id, 'Course ID');
+    const instructorId = parseAuthenticatedUserId(req);
+
+    const data = await this.coursesService.togglePublish(
+      courseId,
+      instructorId,
+    );
+
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Delete('/:id/items/:itemId')

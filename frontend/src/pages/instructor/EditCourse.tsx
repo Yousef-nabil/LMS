@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams, Link } from "react-router";
 import { motion } from "motion/react";
-import { useNavigate, useParams } from "react-router";
+import { Loader2, ChevronLeft, CircleCheck, CircleX, AlertCircle } from "lucide-react";
 import { courseService } from "../../api/services/courseService";
-import { Loader2, Save } from "lucide-react";
+import { CourseMetadataForm } from "../../components/CourseMetadataForm";
+import { CourseContentManager } from "../../components/CourseContentManager";
 import AlertCard from "../../components/AlertCard";
 
 export function EditCourse() {
@@ -10,39 +12,35 @@ export function EditCourse() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
   const [courseData, setCourseData] = useState<{
     title: string;
     description: string;
     thumbnailUrl: string;
-    price: any;
-    thumbnail?: File;
+    price: number;
+    thumbnail?: File | null;
+    isPublished?: boolean;
   }>({
     title: "",
     description: "",
     thumbnailUrl: "",
-    price: "" as any,
+    price: 0,
+    thumbnail: null,
   });
-  const [contents, setContents] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchCourseData = async () => {
       if (!id) return;
       try {
-        const [course, contentData] = await Promise.all([
-          courseService.getCourseById(id),
-          courseService.getCourseContent(id)
-        ]);
-        
+        const course = await courseService.getCourseById(id);
         setCourseData({
           title: course.title,
           description: course.description || "",
           thumbnailUrl: course.thumbnailUrl || "",
           price: course.price ? Number(course.price) : 0,
+          isPublished: course.isPublished ?? false,
         });
-        setContents(contentData);
       } catch (err) {
         setError("Failed to load course data");
       } finally {
@@ -53,31 +51,67 @@ export function EditCourse() {
     fetchCourseData();
   }, [id]);
 
-  const handleUpdate = async () => {
-    if (!id || !courseData.title) {
+  const handleUpdate = async (data: {
+    title: string;
+    description: string;
+    thumbnailUrl: string;
+    price: string | number;
+    thumbnail?: File | null;
+  }) => {
+    if (!id || !data.title.trim()) {
       setError("Course title is required");
       return;
     }
 
     setSaving(true);
     setError(null);
-    setUploadProgress(0);
 
     try {
       await courseService.updateCourse(
-        id, 
+        id,
         {
-          ...courseData,
-          price: Number(courseData.price),
+          title: data.title,
+          description: data.description,
+          thumbnailUrl: data.thumbnailUrl,
+          price: Number(data.price),
         },
-        (progress) => setUploadProgress(progress)
+        () => {}
       );
-      navigate("/instructor/my-courses");
+
+      // Refresh local data after update
+      const course = await courseService.getCourseById(id);
+      setCourseData((prev) => ({
+        ...prev,
+        title: course.title,
+        description: course.description || "",
+        thumbnailUrl: course.thumbnailUrl || "",
+        price: course.price ? Number(course.price) : 0,
+      }));
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to update course");
     } finally {
       setSaving(false);
-      setUploadProgress(0);
+    }
+  };
+
+  const handleTogglePublish = async () => {
+    if (!id) return;
+
+    setPublishing(true);
+    setError(null);
+
+    try {
+      const result = await courseService.publishCourse(id);
+      setCourseData((prev) => ({
+        ...prev,
+        isPublished: !prev.isPublished,
+      }));
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || "Failed to toggle publish status"
+      );
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -90,135 +124,72 @@ export function EditCourse() {
   }
 
   return (
-    <div className="max-w-4xl space-y-8">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Edit Course</h1>
-        <p className="text-muted-foreground">
-          Update your course details and settings
-        </p>
-      </motion.div>
+    <div className="max-w-4xl space-y-8 pb-20">
+      {/* Top navigation */}
+      <div className="flex items-center gap-4">
+        <Link
+          to="/instructor/my-courses"
+          className="p-2 hover:bg-secondary rounded-full transition-colors"
+        >
+          <ChevronLeft className="size-6" />
+        </Link>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Course Management</h2>
+          <p className="text-muted-foreground text-sm">{courseData.title}</p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+              courseData.isPublished
+                ? "bg-green-500/10 text-green-600"
+                : "bg-yellow-500/10 text-yellow-600"
+            }`}
+          >
+            {courseData.isPublished ? (
+              <>
+                <CircleCheck className="size-3" />
+                Published
+              </>
+            ) : (
+              <>
+                <CircleX className="size-3" />
+                Draft
+              </>
+            )}
+          </span>
+          <Link
+            to={`/instructor/courses/${id}/view`}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-xl transition-colors"
+          >
+            <AlertCircle className="size-4" />
+            Preview
+          </Link>
+        </div>
+      </div>
 
       {error && (
-        <AlertCard 
-          variant="error" 
-          message={error} 
-          onClose={() => setError(null)} 
+        <AlertCard
+          variant="error"
+          message={error}
+          onClose={() => setError(null)}
         />
       )}
 
-      {/* Course Details */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-card p-6 rounded-2xl border border-border space-y-6"
-      >
-        <h2 className="text-xl font-semibold text-foreground">Course Details</h2>
+      {/* Metadata Form */}
+      <CourseMetadataForm
+        initialData={courseData}
+        loading={saving}
+        error={error}
+        submitLabel="Save Changes"
+        isPublished={courseData.isPublished}
+        onTogglePublish={handleTogglePublish}
+        toggleLoading={publishing}
+        onCancel={() => navigate("/instructor/my-courses")}
+        onSubmit={handleUpdate}
+      />
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-foreground mb-2">Course Title</label>
-            <input
-              type="text"
-              value={courseData.title}
-              onChange={(e) => setCourseData({ ...courseData, title: e.target.value })}
-              placeholder="e.g., Complete Web Development"
-              className="w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Description</label>
-          <textarea
-            rows={4}
-            value={courseData.description}
-            onChange={(e) => setCourseData({ ...courseData, description: e.target.value })}
-            placeholder="Describe what students will learn..."
-            className="w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
-          />
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Thumbnail</label>
-            <div className="relative">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setCourseData({ ...courseData, thumbnail: e.target.files?.[0] })}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                disabled={saving}
-              />
-              <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${courseData.thumbnail ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                <div className="text-sm font-medium text-foreground truncate">
-                  {courseData.thumbnail ? courseData.thumbnail.name : 'Select new thumbnail'}
-                </div>
-                {!courseData.thumbnail && <div className="text-xs text-muted-foreground">or leave to keep current</div>}
-              </div>
-            </div>
-            {saving && uploadProgress > 0 && (
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-[10px] font-medium">
-                  <span className="text-primary">Uploading thumbnail...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${uploadProgress}%` }}
-                    className="h-full bg-primary"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Price ($)</label>
-            <input
-              type="number"
-              value={courseData.price}
-              onChange={(e) => setCourseData({ ...courseData, price: e.target.value })}
-              placeholder="99.99"
-              className="w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-            />
-          </div>
-        </div>
-      </motion.div>
-
-      
-
-      {/* Submit */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex gap-4"
-      >
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          disabled={saving}
-          onClick={handleUpdate}
-          className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all flex items-center justify-center gap-2"
-        >
-          {saving ? <Loader2 className="size-5 animate-spin" /> : (
-            <>
-              <Save className="size-5" />
-              Save Changes
-            </>
-          )}
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          disabled={saving}
-          onClick={() => navigate("/instructor/my-courses")}
-          className="px-8 py-4 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/80 transition-all"
-        >
-          Cancel
-        </motion.button>
-      </motion.div>
+      {/* Content Manager */}
+      <CourseContentManager courseId={id!} />
     </div>
   );
 }
